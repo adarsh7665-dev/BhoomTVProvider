@@ -119,15 +119,53 @@ class BhoomTVProvider : MainAPI() {
             )
         }
 
+        // BHOOM source buttons can keep the actual player URL in uncommon data attributes or inline JavaScript.
+        doc.select(
+            "[onclick], [data-src], [data-url], [data-source], [data-stream], " +
+                "[data-video], [data-video-url], [data-embed], [data-embed-url], " +
+                "[data-player], [data-player-url], [data-href], [data-link], " +
+                "[data-playlist], [data-file], [data-m3u8], [data-mpd]"
+        ).forEach { element ->
+            listOf(
+                "onclick", "data-src", "data-url", "data-source", "data-stream",
+                "data-video", "data-video-url", "data-embed", "data-embed-url",
+                "data-player", "data-player-url", "data-href", "data-link",
+                "data-playlist", "data-file", "data-m3u8", "data-mpd"
+            ).forEach { attr ->
+                val value = element.attr(attr)
+                if (value.isNotBlank()) {
+                    Regex("""(?i)(?:https?:)?//[^\"'\\s<>\\\\]+""")
+                        .findAll(value)
+                        .forEach { addCandidate(it.value) }
+                    addCandidate(value)
+                }
+            }
+        }
+
         // Common player configuration / JSON fields.
         Regex(
-            """(?i)["'](?:file|src|source|stream|url|playlist|hls|dash)["']\s*[:=]\s*["']([^"']+)["']"""
+            """(?i)[\"'](?:file|src|source|stream|url|playlist|hls|dash|embed|player|video)[\"']\\s*[:=]\\s*[\"']([^\"']+)[\"']"""
         ).findAll(html).forEach { addCandidate(it.groupValues[1]) }
 
-        // Also catch JSON values where the URL itself is escaped.
-        Regex(
-            """(?i)["'](?:file|src|source|stream|url|playlist)["']\s*[:=]\s*["']((?:https?:)?//[^"']+)["']"""
-        ).findAll(html).forEach { addCandidate(it.groupValues[1]) }
+        // Catch direct media/player URLs anywhere in inline HTML/JS.
+        Regex("""(?i)(?:https?:)?//[^\"'\\s<>\\\\]+""").findAll(html).forEach { match ->
+            val candidate = match.value
+            if (candidate.contains(".m3u8", true) || candidate.contains(".mpd", true) ||
+                candidate.contains("/embed/", true) || candidate.contains("/player", true) ||
+                candidate.contains("player.", true) || candidate.contains("stream", true)) {
+                addCandidate(candidate)
+            }
+        }
+
+        // Some player URLs are base64-encoded in page data.
+        Regex("""(?<![A-Za-z0-9+/])([A-Za-z0-9+/]{80,}={0,2})(?![A-Za-z0-9+/])""").findAll(html).forEach { match ->
+            try {
+                val decoded = android.util.Base64.decode(match.groupValues[1], android.util.Base64.DEFAULT).toString(Charsets.UTF_8)
+                if (decoded.startsWith("http", true) || decoded.contains(".m3u8", true) || decoded.contains(".mpd", true)) {
+                    addCandidate(decoded)
+                }
+            } catch (_: Exception) { }
+        }
 
         var linkCount = 0
 
