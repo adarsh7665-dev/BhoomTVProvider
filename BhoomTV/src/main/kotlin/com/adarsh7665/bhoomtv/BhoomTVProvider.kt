@@ -2,6 +2,7 @@ package com.adarsh7665.bhoomtv
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
+import java.net.URI
 
 class BhoomTVProvider : MainAPI() {
     override var mainUrl = "https://bhoomtv.org"
@@ -508,10 +509,75 @@ class BhoomTVProvider : MainAPI() {
         }
 
         val stream = streamInfoByUrl[data] ?: Stream1(data)
+        val headers = mapOf(
+            "User-Agent" to USER_AGENT,
+            "Accept" to "*/*"
+        )
+
+        /*
+         * Do not replace the configured channel source.
+         * First open it at playback time. If it is an HLS master playlist,
+         * resolve the best child media playlist and hand that to ExoPlayer.
+         * This avoids depending on ExoPlayer's handling of some remote
+         * master playlists while keeping the original source unchanged.
+         */
+        val resolvedUrl = if (data.contains(".m3u8", ignoreCase = true)) {
+            runCatching {
+                val response = app.get(
+                    data,
+                    headers = headers,
+                    referer = stream.referer
+                )
+                val body = response.text
+                val variantUrls = body
+                    .lineSequence()
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() && !it.startsWith("#") }
+                    .toList()
+
+                val hasMasterVariants = body.contains("#EXT-X-STREAM-INF", ignoreCase = true)
+
+                if (!hasMasterVariants || variantUrls.isEmpty()) {
+                    data
+                } else {
+                    var bestUrl: String? = null
+                    var bestBandwidth = Long.MIN_VALUE
+
+                    val lines = body.lines()
+                    for (index in lines.indices) {
+                        val line = lines[index].trim()
+                        if (!line.startsWith("#EXT-X-STREAM-INF", ignoreCase = true)) continue
+
+                        val bandwidth = Regex("""BANDWIDTH=(\\d+)""", RegexOption.IGNORE_CASE)
+                            .find(line)
+                            ?.groupValues
+                            ?.getOrNull(1)
+                            ?.toLongOrNull()
+                            ?: 0L
+
+                        val child = lines
+                            .drop(index + 1)
+                            .firstOrNull {
+                                val value = it.trim()
+                                value.isNotEmpty() && !value.startsWith("#")
+                            }
+
+                        if (child != null && bandwidth >= bestBandwidth) {
+                            bestBandwidth = bandwidth
+                            bestUrl = URI(data).resolve(child).toString()
+                        }
+                    }
+
+                    bestUrl ?: data
+                }
+            }.getOrDefault(data)
+        } else {
+            data
+        }
 
         val type = when {
-            data.contains(".mpd", ignoreCase = true) -> ExtractorLinkType.DASH
-            data.contains(".m3u8", ignoreCase = true) -> ExtractorLinkType.M3U8
+            resolvedUrl.contains(".mpd", ignoreCase = true) -> ExtractorLinkType.DASH
+            resolvedUrl.contains(".m3u8", ignoreCase = true) -> ExtractorLinkType.M3U8
             else -> ExtractorLinkType.VIDEO
         }
 
@@ -519,11 +585,11 @@ class BhoomTVProvider : MainAPI() {
             newExtractorLink(
                 source = name,
                 name = name,
-                url = stream.url,
+                url = resolvedUrl,
                 type = type
             ) {
                 referer = stream.referer
-                headers = mapOf("User-Agent" to USER_AGENT)
+                headers = headers
                 quality = Qualities.Unknown.value
             }
         )
