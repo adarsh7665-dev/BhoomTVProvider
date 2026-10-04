@@ -1,26 +1,62 @@
 name: Build CloudStream extension
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "*.md"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "bhoom-build"
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          path: src
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
-      - name: Make extension
-        run: ./gradlew BhoomTV:make
-      - name: Build repository metadata
-        run: ./gradlew make
-      - name: Publish builds branch
-        uses: peaceiris/actions-gh-pages@v4
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
         with:
-          publish_branch: builds
-          publish_dir: ./build/repo
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          gradle-version: 8.5
+
+      - name: Build plugins
+        working-directory: src
+        run: |
+          gradle make makePluginsJson
+
+      - name: Checkout builds branch
+        uses: actions/checkout@v4
+        with:
+          ref: builds
+          path: builds
+
+      - name: Publish generated files
+        run: |
+          find builds -mindepth 1 -maxdepth 1 ! -name ".git" -exec rm -rf {} +
+          cp src/repo.json builds/repo.json
+          cp src/BhoomTV/build/*.cs3 builds/
+          cp src/build/plugins.json builds/plugins.json
+
+          cd builds
+          git config user.name "adarsh7665-dev"
+          git config user.email "adarsh7665-dev@users.noreply.github.com"
+          git add -A
+          git commit -m "Build $GITHUB_SHA" || exit 0
+          git push origin builds
