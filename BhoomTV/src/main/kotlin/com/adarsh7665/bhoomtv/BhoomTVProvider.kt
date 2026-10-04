@@ -326,7 +326,7 @@ class BhoomTVProvider : MainAPI() {
         ),
         MollywoodChannel(
             "Asianet Movies HD",
-            Stream1("http://149.71.34.166:8000/play/a06e/index.m3u8"),
+            Stream1("https://da86m1sqpm3o0.cloudfront.net/28072023/smil:asianetmovies1.smil/playlist.m3u8"),
             "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_MOVIES_HD/images/LOGO_HD/image.png"
         ),
         MollywoodChannel(
