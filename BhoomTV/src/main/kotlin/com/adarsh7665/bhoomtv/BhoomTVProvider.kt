@@ -154,7 +154,9 @@ class BhoomTVProvider : MainAPI() {
                     resolved,
                     referer = referer,
                     headers = mapOf(
-                        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+                        "User-Agent" to USER_AGENT,
+                        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                        "Accept-Language" to "en-US,en;q=0.9"
                     )
                 )
                 val html = response.text
@@ -194,6 +196,31 @@ class BhoomTVProvider : MainAPI() {
                 nextPlayers.forEach { scanPage(it, resolved, depth + 1) }
             } catch (_: Exception) { }
         }
+
+        // Also scan the channel page directly with a normal browser User-Agent.
+        // This is important because BHOOM can return a different player/source to CloudStream's default UA.
+        try {
+            val html = app.get(
+                data,
+                referer = mainUrl,
+                headers = mapOf(
+                    "User-Agent" to USER_AGENT,
+                    "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    "Accept-Language" to "en-US,en;q=0.9"
+                )
+            ).text
+
+            Regex("""(?i)(?:https?:)?//[^"'\s<>\\]+""").findAll(html).forEach {
+                val u = it.value
+                if (u.contains(".m3u8", true) || u.contains(".mpd", true)) {
+                    addCandidate(u, data)
+                }
+            }
+
+            Regex("""(?i)["'](?:file|src|source|stream|url|hls|dash|playlist)["']\s*[:=]\s*["']([^"']+)["']""")
+                .findAll(html)
+                .forEach { addCandidate(it.groupValues[1], data) }
+        } catch (_: Exception) { }
 
         scanPage(data, mainUrl, 0)
 
