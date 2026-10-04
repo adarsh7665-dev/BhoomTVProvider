@@ -28,7 +28,7 @@ class BhoomTVProvider : MainAPI() {
      */
     private val stream1BySlug = mapOf(
         "keralam-hd" to Stream1(
-            "https://live.drmlive-02.workers.dev/zee/129.m3u8"
+            "http://51.75.127.199:3141/zeekeralamhd/index.m3u8"
         ),
         "globeon-television" to Stream1(
             "https://bhoomtv.net/geo/live.m3u8?id=3565&vtoken=st=1790654897",
@@ -326,7 +326,7 @@ class BhoomTVProvider : MainAPI() {
         ),
         MollywoodChannel(
             "Asianet Movies HD",
-            Stream1("https://live.dinesh29.com.np/stream/jiotvplus/asianetmovieshd/master.m3u8"),
+            Stream1("http://149.71.34.166:8000/play/a06e/index.m3u8"),
             "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_MOVIES_HD/images/LOGO_HD/image.png"
         ),
         MollywoodChannel(
@@ -339,32 +339,32 @@ class BhoomTVProvider : MainAPI() {
         ),
         MollywoodChannel(
             "Zee Keralam HD",
-            Stream1("https://live.drmlive-02.workers.dev/zee/129.m3u8"),
+            Stream1("http://51.75.127.199:3141/zeekeralamhd/index.m3u8"),
             "https://akamaividz2.zee5.com/image/upload/resources/0-9-129/channel_list/1170x658withlogoea00fd123614470c9f82e2fde66280e4.png"
         ),
         MollywoodChannel(
             "Surya TV HD",
-            Stream1("http://indtv.online/sunnxt/sunnxt/SuryaTVHD.m3u8"),
+            Stream1("https://livestream10.sunnxt.com/DolbyVision/SuryaTV_HDR/SuryaTV_HDR_Endpoints/SuryaTV-HDR10-IN-index.m3u8"),
             "https://sund-images.sunnxt.com/194397/1000x1000_SuryaTVHD_194397_4c99c17b-92d4-49be-a490-b5958067190a.png"
         ),
         MollywoodChannel(
             "Surya Movies",
-            Stream1("http://indtv.online/sunnxt/sunnxt/SuryaMovies.m3u8"),
+            Stream1("http://103.140.254.2:3500/live/1754.m3u8"),
             "https://sund-images.sunnxt.com/9019/1000x1000_c10cc678-9321-43f8-b717-16fa7913a6ba.jpg"
         ),
         MollywoodChannel(
             "Surya Comedy",
-            Stream1("http://indtv.online/sunnxt/sunnxt/SuryaComedy.m3u8"),
+            Stream1("http://103.140.254.2:3500/live/1662.m3u8"),
             "https://sund-images.sunnxt.com/30835/1000x1000_143a4af4-2f02-4c9c-814b-af149e6a5a95.jpg"
         ),
         MollywoodChannel(
             "Surya Music",
-            Stream1("http://indtv.online/sunnxt/sunnxt/SuryaMusic.m3u8"),
+            Stream1("http://103.140.254.2:3500/live/747.m3u8"),
             "https://sund-images.sunnxt.com/26575/1000x1000_a73efcfb-e350-491c-94e0-bd75f0d9d5f2.jpg"
         ),
         MollywoodChannel(
             "Kochu TV",
-            Stream1("https://sflex07.fun:443/07/jio/app/ts_live_556.m3u8"),
+            Stream1("http://103.140.254.2:3500/live/556.m3u8"),
             "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_KOCHU_TV/images/LOGO_HD/image.png"
         )
     )
@@ -509,87 +509,29 @@ class BhoomTVProvider : MainAPI() {
         }
 
         val stream = streamInfoByUrl[data] ?: Stream1(data)
-        val headers = mapOf(
-            "User-Agent" to USER_AGENT,
-            "Accept" to "*/*"
-        )
-
-        /*
-         * Do not replace the configured channel source.
-         * First open it at playback time. If it is an HLS master playlist,
-         * resolve the best child media playlist and hand that to ExoPlayer.
-         * This avoids depending on ExoPlayer's handling of some remote
-         * master playlists while keeping the original source unchanged.
-         */
-        val resolvedUrl = if (data.contains(".m3u8", ignoreCase = true)) {
-            runCatching {
-                val response = app.get(
-                    data,
-                    headers = headers,
-                    referer = stream.referer
-                )
-                val body = response.text
-                val variantUrls = body
-                    .lineSequence()
-                    .map { it.trim() }
-                    .filter { it.isNotEmpty() && !it.startsWith("#") }
-                    .toList()
-
-                val hasMasterVariants = body.contains("#EXT-X-STREAM-INF", ignoreCase = true)
-
-                if (!hasMasterVariants || variantUrls.isEmpty()) {
-                    data
-                } else {
-                    var bestUrl: String? = null
-                    var bestBandwidth = Long.MIN_VALUE
-
-                    val lines = body.lines()
-                    for (index in lines.indices) {
-                        val line = lines[index].trim()
-                        if (!line.startsWith("#EXT-X-STREAM-INF", ignoreCase = true)) continue
-
-                        val bandwidth = Regex("""BANDWIDTH=(\\d+)""", RegexOption.IGNORE_CASE)
-                            .find(line)
-                            ?.groupValues
-                            ?.getOrNull(1)
-                            ?.toLongOrNull()
-                            ?: 0L
-
-                        val child = lines
-                            .drop(index + 1)
-                            .firstOrNull {
-                                val value = it.trim()
-                                value.isNotEmpty() && !value.startsWith("#")
-                            }
-
-                        if (child != null && bandwidth >= bestBandwidth) {
-                            bestBandwidth = bandwidth
-                            bestUrl = URI(data).resolve(child).toString()
-                        }
-                    }
-
-                    bestUrl ?: data
-                }
-            }.getOrDefault(data)
-        } else {
-            data
-        }
 
         val type = when {
-            resolvedUrl.contains(".mpd", ignoreCase = true) -> ExtractorLinkType.DASH
-            resolvedUrl.contains(".m3u8", ignoreCase = true) -> ExtractorLinkType.M3U8
+            data.contains(".mpd", ignoreCase = true) -> ExtractorLinkType.DASH
+            data.contains(".m3u8", ignoreCase = true) -> ExtractorLinkType.M3U8
             else -> ExtractorLinkType.VIDEO
         }
 
+        /*
+         * Famelack-style playback: emit the configured stream immediately.
+         * Do not pre-fetch or resolve the manifest in the provider.
+         */
         callback(
             newExtractorLink(
                 source = name,
                 name = name,
-                url = resolvedUrl,
+                url = data,
                 type = type
             ) {
                 referer = stream.referer
-                this.headers = headers
+                this.headers = mapOf(
+                    "User-Agent" to USER_AGENT,
+                    "Accept" to "*/*"
+                )
                 quality = Qualities.Unknown.value
             }
         )
