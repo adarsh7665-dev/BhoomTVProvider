@@ -1,10 +1,10 @@
 [
     {
         "iconUrl": "https://bhoomtv.org/wp-content/uploads/2026/07/cropped-BHOOM-TV-Logo.png",
-        "fileHash": "sha256-ad4e151a29814ce133cb89022589a536186da8d68c17e00457cd031f4e7685b1",
+        "fileHash": "sha256-53f9b85230cdf0d8e90d11ad99670d3119d019fa5c343f3d95db8e5d2dcf4212",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/adarsh7665-dev/BhoomTVProvider",
-        "fileSize": 16489,
+        "fileSize": 18695,
         "status": 1,
         "language": "ml",
         "authors": [
