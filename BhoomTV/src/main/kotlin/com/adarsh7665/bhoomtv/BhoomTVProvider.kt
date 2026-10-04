@@ -77,7 +77,7 @@ class BhoomTVProvider : MainAPI() {
         "mazhavil-manorama-hd" to Stream1(
             "https://ddozob4sbfsmt.cloudfront.net/out/v1/51aaeddf56854312add90dfa8df07e39/index.m3u8"
         ),
-        "mazhavil-manorama" to Stream1(
+        "mazhavil-manorama-sd" to Stream1(
             "https://yuppmedtaorire.akamaized.net/v1/master/a0d007312bfd99c47f76b77ae26b1ccdaae76cb1/mazhavilmanorama_nim_https/050522/mazhavilmanorama/playlist.m3u8"
         ),
         "middle-east" to Stream1(
