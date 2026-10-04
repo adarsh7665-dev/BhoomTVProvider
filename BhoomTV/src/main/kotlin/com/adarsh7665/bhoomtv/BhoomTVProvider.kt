@@ -65,15 +65,6 @@ class BhoomTVProvider : MainAPI() {
         "kairali-arabia" to Stream1(
             "https://streamhub.dhruvpatil681.workers.dev/3452.m3u8"
         ),
-        "mollywood-tv" to Stream1(
-            "https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/in/YuppTV/AsianetHD.m3u8"
-        ),
-        "mollywood-plus" to Stream1(
-            "https://d3dt6rg724ecr3.cloudfront.net/SuryaTv/SuryaTV-HDR10-IN-index.m3u8"
-        ),
-        "mollywood-max" to Stream1(
-            "http://indtv.online/sunnxt/sunnxt/SuryaMovies.m3u8"
-        ),
         "mazhavil-hd" to Stream1(
             "https://ddozob4sbfsmt.cloudfront.net/out/v1/51aaeddf56854312add90dfa8df07e39/index.m3u8"
         ),
@@ -312,6 +303,74 @@ class BhoomTVProvider : MainAPI() {
     private val streamInfoByUrl =
         stream1BySlug.values.associateBy { it.url }
 
+    /*
+     * BHOOM's Mollywood TV / Plus pages are container pages.
+     * Expose the actual child channels individually in CloudStream.
+     *
+     * Duplicate rule:
+     * - Keep HD when both HD and SD are present.
+     * - Keep SD only when no HD version exists.
+     * - Do not expose the three Mollywood container pages themselves.
+     *
+     * Logos below use stable public channel-logo URLs where available.
+     */
+    private data class MollywoodChannel(
+        val name: String,
+        val stream: Stream1,
+        val poster: String? = null
+    )
+
+    private val mollywoodChannels = listOf(
+        MollywoodChannel(
+            "Asianet HD",
+            Stream1("https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/in/YuppTV/AsianetHD.m3u8"),
+            "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_HD/images/LOGO_HD/image.png"
+        ),
+        MollywoodChannel(
+            "Asianet Movies HD",
+            Stream1("https://da86m1sqpm3o0.cloudfront.net/28072023/smil:asianetmovies1.smil/playlist.m3u8"),
+            "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_MOVIES_HD/images/LOGO_HD/image.png"
+        ),
+        MollywoodChannel(
+            "Asianet Plus",
+            Stream1(
+                "https://anet.keralive.workers.dev/v1/master/a0d007312bfd99c47f76b77ae26b1ccdaae76cb1/asianetplus_live_https/index.m3u8",
+                "https://tulnit.com"
+            ),
+            "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_PLUS/images/LOGO_HD/image.png"
+        ),
+        MollywoodChannel(
+            "Zee Keralam HD",
+            Stream1("https://live.drmlive-02.workers.dev/zee/129.m3u8"),
+            "https://akamaividz2.zee5.com/image/upload/resources/0-9-129/channel_list/1170x658withlogoea00fd123614470c9f82e2fde66280e4.png"
+        ),
+        MollywoodChannel(
+            "Surya TV HD",
+            Stream1("https://d3dt6rg724ecr3.cloudfront.net/SuryaTv/SuryaTV-HDR10-IN-index.m3u8"),
+            "https://sund-images.sunnxt.com/194397/1000x1000_SuryaTVHD_194397_4c99c17b-92d4-49be-a490-b5958067190a.png"
+        ),
+        MollywoodChannel(
+            "Surya Movies",
+            Stream1("http://indtv.online/sunnxt/sunnxt/SuryaMovies.m3u8"),
+            "https://sund-images.sunnxt.com/9019/1000x1000_c10cc678-9321-43f8-b717-16fa7913a6ba.jpg"
+        ),
+        MollywoodChannel(
+            "Surya Comedy",
+            Stream1("http://indtv.online/sunnxt/sunnxt/SuryaComedy.m3u8"),
+            "https://sund-images.sunnxt.com/30835/1000x1000_143a4af4-2f02-4c9c-814b-af149e6a5a95.jpg"
+        ),
+        MollywoodChannel(
+            "Surya Music",
+            Stream1("http://indtv.online/sunnxt/sunnxt/SuryaMusic.m3u8"),
+            "https://sund-images.sunnxt.com/26575/1000x1000_a73efcfb-e350-491c-94e0-bd75f0d9d5f2.jpg"
+        ),
+        MollywoodChannel(
+            "Kochu TV",
+            Stream1("https://sflex07.fun:443/07/jio/app/ts_live_556.m3u8"),
+            "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_KOCHU_TV/images/LOGO_HD/image.png"
+        )
+    )
+
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val pageNumber = page.coerceAtLeast(1)
         val url = if (pageNumber == 1) {
@@ -321,7 +380,16 @@ class BhoomTVProvider : MainAPI() {
         }
 
         val doc = app.get(url, referer = mainUrl).document
-        val items = parseChannelPage(doc)
+        val items = buildList {
+            addAll(parseChannelPage(doc))
+            if (pageNumber == 1) {
+                addAll(mollywoodChannels.map { channel ->
+                    newLiveSearchResponse(channel.name, channel.stream.url) {
+                        posterUrl = channel.poster
+                    }
+                })
+            }
+        }.distinctBy { it.url }
 
         val maxPage = doc.select("a[href*='/channel/malayalam/page/']")
             .mapNotNull { link ->
@@ -349,6 +417,7 @@ class BhoomTVProvider : MainAPI() {
 
     override suspend fun search(query: String): List<SearchResponse> {
         val normalizedQuery = query.trim()
+
         val pages = (1..4).map { page ->
             val url = if (page == 1) {
                 channelPage
@@ -358,7 +427,7 @@ class BhoomTVProvider : MainAPI() {
             app.get(url, referer = mainUrl).document
         }
 
-        return pages
+        val pageResults = pages
             .flatMap { it.select("a[href*='/live/']") }
             .mapNotNull { anchor ->
                 val href = anchor.absUrl("href").ifBlank { anchor.attr("href") }
@@ -368,6 +437,15 @@ class BhoomTVProvider : MainAPI() {
                     ?: anchor.text().trim()
 
                 if (title.isBlank()) return@mapNotNull null
+
+                // Mollywood TV / Plus / Max are container pages.
+                if (title.equals("Mollywood TV", ignoreCase = true) ||
+                    title.equals("Mollywood Plus", ignoreCase = true) ||
+                    title.equals("Mollywood Max", ignoreCase = true)
+                ) {
+                    return@mapNotNull null
+                }
+
                 if (normalizedQuery.isNotBlank() &&
                     !title.contains(normalizedQuery, ignoreCase = true)
                 ) {
@@ -380,11 +458,8 @@ class BhoomTVProvider : MainAPI() {
                     .lowercase()
 
                 val stream = stream1BySlug[slug] ?: return@mapNotNull null
-
                 val poster = findPoster(anchor)
 
-                // Famelack-style architecture:
-                // SearchResponse contains the ACTUAL Stream-1 URL.
                 newLiveSearchResponse(
                     name = title,
                     url = stream.url
@@ -392,6 +467,22 @@ class BhoomTVProvider : MainAPI() {
                     posterUrl = poster
                 }
             }
+
+        val mollywoodResults = mollywoodChannels
+            .filter {
+                normalizedQuery.isBlank() ||
+                    it.name.contains(normalizedQuery, ignoreCase = true)
+            }
+            .map { channel ->
+                newLiveSearchResponse(
+                    name = channel.name,
+                    url = channel.stream.url
+                ) {
+                    posterUrl = channel.poster
+                }
+            }
+
+        return (pageResults + mollywoodResults)
             .distinctBy { it.url }
     }
 
@@ -448,6 +539,14 @@ class BhoomTVProvider : MainAPI() {
                     ?: anchor.text().trim()
 
                 if (title.isBlank()) return@mapNotNull null
+
+                // Do not show Mollywood container pages.
+                if (title.equals("Mollywood TV", ignoreCase = true) ||
+                    title.equals("Mollywood Plus", ignoreCase = true) ||
+                    title.equals("Mollywood Max", ignoreCase = true)
+                ) {
+                    return@mapNotNull null
+                }
 
                 val slug = href
                     .substringAfter("/live/")
