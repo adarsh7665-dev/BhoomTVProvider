@@ -329,15 +329,13 @@ class BhoomTVProvider : MainAPI() {
         MollywoodChannel(
             "Asianet Movies HD",
             listOf(
-                Stream1("https://da86m1sqpm3o0.cloudfront.net/28072023/smil:asianetmovies1.smil/playlist.m3u8"),
-                Stream1("https://anet.keralive.workers.dev/v1/master/a0d007312bfd99c47f76b77ae26b1ccdaae76cb1/asianetmovies_live_https/index.m3u8")
+                Stream1("https://anet.keralive.workers.dev/v1/master/a0d007312bfd99c47f76b77ae26b1ccdaae76cb1/asianetmovies_live_https/index.m3u8", "https://tulnit.com")
             ),
             "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_MOVIES_HD/images/LOGO_HD/image.png"
         ),
         MollywoodChannel(
             "Asianet Plus",
             listOf(
-                Stream1("http://asianetplus-i.akamaihd.net/hls/live/569922/asianetplus/master_2000.m3u8"),
                 Stream1("https://anet.keralive.workers.dev/v1/master/a0d007312bfd99c47f76b77ae26b1ccdaae76cb1/asianetplus_live_https/index.m3u8", "https://tulnit.com")
             ),
             "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_PLUS/images/LOGO_HD/image.png"
@@ -350,24 +348,21 @@ class BhoomTVProvider : MainAPI() {
         MollywoodChannel(
             "Surya TV FHD",
             listOf(
-                Stream1("http://indtv.online/sunnxt/sunnxt/SuryaTVHD.m3u8"),
-                Stream1("https://sflex07.fun:443/07/jio/app/ts_live_900.m3u8")
+                Stream1("https://livestream10.sunnxt.com/DolbyVision/SuryaTV_HDR/SuryaTV_HDR_Endpoints/SuryaTV-HDR10-IN-index.m3u8")
             ),
             "https://sund-images.sunnxt.com/194397/1000x1000_SuryaTVHD_194397_4c99c17b-92d4-49be-a490-b5958067190a.png"
         ),
         MollywoodChannel(
             "Surya Comedy",
             listOf(
-                Stream1("http://indtv.online/sunnxt/sunnxt/SuryaComedy.m3u8"),
-                Stream1("https://sflex07.fun:443/07/jio/app/ts_live_1662.m3u8")
+                Stream1("https://load.airtelxstream.in/suryacomedy/smil:common.smil/manifest.mpd")
             ),
             "https://sund-images.sunnxt.com/30835/1000x1000_143a4af4-2f02-4c9c-814b-af149e6a5a95.jpg"
         ),
         MollywoodChannel(
             "Surya Movies",
             listOf(
-                Stream1("http://indtv.online/sunnxt/sunnxt/SuryaMovies.m3u8"),
-                Stream1("https://sflex07.fun:443/07/jio/app/ts_live_1754.m3u8")
+                Stream1("https://load.airtelxstream.in/suryamovies/smil:common.smil/playlist.m3u8?DVR")
             ),
             "https://sund-images.sunnxt.com/9019/1000x1000_71ddcc0b-16e7-48e9-9998-aa023200f4bc.jpg"
         )
