@@ -188,12 +188,9 @@ class BhoomTVProvider : MainAPI() {
 
                 val poster = findPoster(anchor)
 
-                LiveSearchResponse(
-                    title,
-                    href,
-                    BhoomTVProvider::class.java,
-                    poster
-                )
+                newLiveSearchResponse(title, href) {
+                    posterUrl = poster
+                }
             }
             .distinctBy { it.url }
     }
