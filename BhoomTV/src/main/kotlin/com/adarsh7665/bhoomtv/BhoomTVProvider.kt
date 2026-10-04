@@ -77,120 +77,154 @@ class BhoomTVProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val response = app.get(data, referer = mainUrl)
-        val html = response.text
-        val doc = response.document
-
+        val visitedPages = linkedSetOf<String>()
         val streamUrls = linkedSetOf<String>()
         val playerUrls = linkedSetOf<String>()
 
-        fun addCandidate(raw: String?) {
-            val resolved = normalizeUrl(raw, data) ?: return
-            val clean = resolved
+        fun addCandidate(raw: String?, baseUrl: String) {
+            if (raw.isNullOrBlank()) return
+
+            var value = raw.trim()
                 .replace("\\/", "/")
                 .replace("&amp;", "&")
+                .replace("\\u0026", "&")
+                .replace("\\u002F", "/")
+                .trim('"', '\'')
 
-            when {
-                clean.contains(".m3u8", ignoreCase = true) ||
-                    clean.contains(".mpd", ignoreCase = true) -> streamUrls.add(clean)
-                clean.startsWith("http://") || clean.startsWith("https://") -> playerUrls.add(clean)
+            val embeddedUrl = Regex("""(?i)(?:https?:)?//[^"'\\s<>\\\\]+""")
+                .find(value)
+                ?.value
+
+            if (!embeddedUrl.isNullOrBlank()) value = embeddedUrl
+            if (value.startsWith("javascript:", true) || value.startsWith("data:", true)) return
+
+            val resolved = try {
+                when {
+                    value.startsWith("//") -> "https:$value"
+                    value.startsWith("http://", true) || value.startsWith("https://", true) -> value
+                    value.startsWith("/") -> URI(baseUrl).resolve(value).toString()
+                    else -> URI(baseUrl).resolve(value).toString()
+                }
+            } catch (_: Exception) {
+                return
+            }
+
+            val clean = resolved.replace("\\/", "/").replace("&amp;", "&")
+
+            if (clean.contains("m3u8", true) || clean.contains("mpd", true)) {
+                streamUrls.add(clean)
+            } else if (clean.startsWith("http://") || clean.startsWith("https://")) {
+                playerUrls.add(clean)
             }
         }
 
-        // Direct HLS/DASH URLs exposed in the page or inline scripts.
-        Regex(
-            """(?i)(?:https?:)?//[^"'\s<>\\]+\.(?:m3u8|mpd)(?:\?[^"'\s<>\\]*)?"""
-        ).findAll(html).forEach { addCandidate(it.value) }
+        fun scanHtml(html: String, baseUrl: String) {
+            Regex("""(?i)(?:https?:)?//[^"'\\s<>\\\\]+""").findAll(html).forEach {
+                val candidate = it.value
+                if (candidate.contains("m3u8", true) ||
+                    candidate.contains("mpd", true) ||
+                    candidate.contains("stream", true) ||
+                    candidate.contains("/embed/", true) ||
+                    candidate.contains("/player", true) ||
+                    candidate.contains("player.", true)) {
+                    addCandidate(candidate, baseUrl)
+                }
+            }
 
-        // Common player/embed attributes.
-        doc.select(
-            "iframe[src], iframe[data-src], amp-iframe[src], " +
-                "video[src], video source[src], source[src], " +
-                "[data-src], [data-url], [data-stream], [data-playlist]"
-        ).forEach { element ->
-            addCandidate(
-                element.attr("src").ifBlank {
-                    element.attr("data-src").ifBlank {
-                        element.attr("data-url").ifBlank {
-                            element.attr("data-stream").ifBlank { element.attr("data-playlist") }
-                        }
+            Regex(
+                """(?i)["'](?:file|src|source|stream|url|playlist|hls|dash|embed|player|video|streamUrl|stream_url|fileUrl|file_url)["']\s*[:=]\s*["']([^"']+)["']"""
+            ).findAll(html).forEach { addCandidate(it.groupValues[1], baseUrl) }
+
+            Regex("""(?i)(?:window\.open|open|loadPlayer|loadSource|play|source|src|file)\s*\(\s*["']([^"']+)["']""")
+                .findAll(html)
+                .forEach { addCandidate(it.groupValues[1], baseUrl) }
+        }
+
+        suspend fun scanPage(pageUrl: String, referer: String, depth: Int) {
+            val resolved = try {
+                URI(referer).resolve(pageUrl).toString()
+            } catch (_: Exception) {
+                pageUrl
+            }
+
+            if (!visitedPages.add(resolved) || depth > 2) return
+
+            try {
+                val response = app.get(
+                    resolved,
+                    referer = referer,
+                    headers = mapOf(
+                        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+                    )
+                )
+                val html = response.text
+                val doc = response.document
+
+                scanHtml(html, resolved)
+
+                doc.select(
+                    "iframe[src], iframe[data-src], amp-iframe[src], " +
+                        "video[src], video source[src], source[src], " +
+                        "[onclick], [data-src], [data-url], [data-source], [data-stream], " +
+                        "[data-video], [data-video-url], [data-embed], [data-embed-url], " +
+                        "[data-player], [data-player-url], [data-href], [data-link], " +
+                        "[data-playlist], [data-file], [data-m3u8], [data-mpd]"
+                ).forEach { element ->
+                    listOf(
+                        "src", "data-src", "data-url", "data-source", "data-stream",
+                        "data-video", "data-video-url", "data-embed", "data-embed-url",
+                        "data-player", "data-player-url", "data-href", "data-link",
+                        "data-playlist", "data-file", "data-m3u8", "data-mpd", "onclick"
+                    ).forEach { attr ->
+                        val value = element.attr(attr)
+                        if (value.isNotBlank()) addCandidate(value, resolved)
                     }
                 }
-            )
-        }
 
-        // BHOOM source buttons can keep the actual player URL in uncommon data attributes or inline JavaScript.
-        doc.select(
-            "[onclick], [data-src], [data-url], [data-source], [data-stream], " +
-                "[data-video], [data-video-url], [data-embed], [data-embed-url], " +
-                "[data-player], [data-player-url], [data-href], [data-link], " +
-                "[data-playlist], [data-file], [data-m3u8], [data-mpd]"
-        ).forEach { element ->
-            listOf(
-                "onclick", "data-src", "data-url", "data-source", "data-stream",
-                "data-video", "data-video-url", "data-embed", "data-embed-url",
-                "data-player", "data-player-url", "data-href", "data-link",
-                "data-playlist", "data-file", "data-m3u8", "data-mpd"
-            ).forEach { attr ->
-                val value = element.attr(attr)
-                if (value.isNotBlank()) {
-                    Regex("""(?i)(?:https?:)?//[^\"'\\s<>\\\\]+""")
-                        .findAll(value)
-                        .forEach { addCandidate(it.value) }
-                    addCandidate(value)
-                }
-            }
-        }
+                val nextPlayers = playerUrls.toList()
+                    .filter { it != resolved }
+                    .filter {
+                        it.contains("embed", true) ||
+                        it.contains("player", true) ||
+                        it.contains("stream", true) ||
+                        it.contains("m3u8", true) ||
+                        it.contains("mpd", true)
+                    }
 
-        // Common player configuration / JSON fields.
-        Regex(
-            """(?i)[\"'](?:file|src|source|stream|url|playlist|hls|dash|embed|player|video)[\"']\\s*[:=]\\s*[\"']([^\"']+)[\"']"""
-        ).findAll(html).forEach { addCandidate(it.groupValues[1]) }
-
-        // Catch direct media/player URLs anywhere in inline HTML/JS.
-        Regex("""(?i)(?:https?:)?//[^\"'\\s<>\\\\]+""").findAll(html).forEach { match ->
-            val candidate = match.value
-            if (candidate.contains(".m3u8", true) || candidate.contains(".mpd", true) ||
-                candidate.contains("/embed/", true) || candidate.contains("/player", true) ||
-                candidate.contains("player.", true) || candidate.contains("stream", true)) {
-                addCandidate(candidate)
-            }
-        }
-
-        // Some player URLs are base64-encoded in page data.
-        Regex("""(?<![A-Za-z0-9+/])([A-Za-z0-9+/]{80,}={0,2})(?![A-Za-z0-9+/])""").findAll(html).forEach { match ->
-            try {
-                val decoded = android.util.Base64.decode(match.groupValues[1], android.util.Base64.DEFAULT).toString(Charsets.UTF_8)
-                if (decoded.startsWith("http", true) || decoded.contains(".m3u8", true) || decoded.contains(".mpd", true)) {
-                    addCandidate(decoded)
-                }
+                nextPlayers.forEach { scanPage(it, resolved, depth + 1) }
             } catch (_: Exception) { }
         }
 
+        scanPage(data, mainUrl, 0)
+
         var linkCount = 0
 
-        streamUrls.forEach { source ->
-            val type = if (source.contains(".mpd", ignoreCase = true)) {
+        streamUrls.distinct().forEach { source ->
+            val type = if (source.contains("mpd", ignoreCase = true)) {
                 ExtractorLinkType.DASH
             } else {
                 ExtractorLinkType.M3U8
             }
 
-            val link = newExtractorLink(
-                source = "BHOOM TV",
-                name = name,
-                url = source,
-                type = type
-            ) {
-                referer = data
-                headers = mapOf("Origin" to mainUrl)
-            }
-
-            callback(link)
-            linkCount++
+            try {
+                callback(
+                    newExtractorLink(
+                        source = "BHOOM TV",
+                        name = name,
+                        url = source,
+                        type = type
+                    ) {
+                        referer = data
+                        headers = mapOf(
+                            "Origin" to mainUrl,
+                            "User-Agent" to USER_AGENT
+                        )
+                    }
+                )
+                linkCount++
+            } catch (_: Exception) { }
         }
 
-        // Send embedded player URLs through CloudStream's extractor registry.
         playerUrls
             .filterNot { it.contains("b9e3e814.delivery.rocketcdn.me", ignoreCase = true) }
             .distinct()
@@ -205,9 +239,7 @@ class BhoomTVProvider : MainAPI() {
                             callback(it)
                         }
                     )
-                } catch (_: Exception) {
-                    // One dead mirror must not prevent the other sources from loading.
-                }
+                } catch (_: Exception) { }
             }
 
         return linkCount > 0
