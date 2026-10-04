@@ -465,32 +465,30 @@ class BhoomTVProvider : MainAPI() {
         val channel = mollywoodChannels.firstOrNull { it.streams.any { stream -> stream.url == data } }
         val candidates = channel?.streams ?: listOf(streamInfoByUrl[data] ?: Stream1(data))
 
-        // Probe candidates and expose only the first endpoint that returns a valid manifest.
-        val selected = candidates.firstOrNull { candidate ->
-            runCatching {
-                val response = app.get(candidate.url, referer = candidate.referer, timeout = 8_000)
-                response.isSuccessful && (
-                    candidate.url.contains(".m3u8", true) ||
-                    response.text.contains("#EXTM3U", true) ||
-                    response.text.contains("<MPD", true)
-                )
-            }.getOrDefault(false)
-        } ?: return false
+        // Do not probe the manifest from inside loadLinks().
+        // Some live servers reject CloudStream's probe request even though the
+        // same HLS URL is playable by ExoPlayer. Probing here caused "No links
+        // found" for otherwise valid live channels.
+        candidates.forEach { candidate ->
+            val type = if (candidate.url.contains(".mpd", true)) {
+                ExtractorLinkType.DASH
+            } else {
+                ExtractorLinkType.M3U8
+            }
 
-        val type = if (selected.url.contains(".mpd", true)) {
-            ExtractorLinkType.DASH
-        } else {
-            ExtractorLinkType.M3U8
+            callback(
+                newExtractorLink(source = name, name = name, url = candidate.url, type = type) {
+                    referer = candidate.referer
+                    headers = mapOf(
+                        "User-Agent" to USER_AGENT,
+                        "Accept" to "*/*"
+                    )
+                    quality = Qualities.Unknown.value
+                }
+            )
         }
 
-        callback(
-            newExtractorLink(source = name, name = name, url = selected.url, type = type) {
-                referer = selected.referer
-                headers = mapOf("User-Agent" to USER_AGENT, "Accept" to "*/*")
-                quality = Qualities.Unknown.value
-            }
-        )
-        return true
+        return candidates.isNotEmpty()
     }
 
     private fun parseChannelPage(doc: org.jsoup.nodes.Document): List<SearchResponse> {
