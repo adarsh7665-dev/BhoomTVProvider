@@ -1,8 +1,8 @@
 # BHOOM TV CloudStream Extension
 
-CloudStream provider for the Malayalam live-TV directory at https://bhoomtv.org/channel/malayalam/
+CloudStream extension for the public Malayalam live-channel directory on BHOOM TV.
 
-The provider uses the public channel pages exposed by BHOOM TV and extracts explicitly exposed HLS/DASH playback URLs. Channel availability can change because BHOOM TV aggregates third-party public streams.
+The provider scrapes the four Malayalam channel listing pages so newly added channels are picked up automatically. On playback it checks for publicly exposed HLS/DASH URLs and public player/embed URLs on each channel page and hands those sources to CloudStream.
 
 Repository URL:
 https://raw.githubusercontent.com/adarsh7665-dev/BhoomTVProvider/main/repo.json
