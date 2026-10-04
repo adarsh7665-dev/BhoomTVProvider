@@ -136,10 +136,14 @@ class BhoomTVProvider : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
-        val doc = app.get("$mainUrl/?s=$encodedQuery", referer = mainUrl).document
+        val normalizedQuery = query.trim()
+        val pages = (1..4).map { page ->
+            val url = if (page == 1) channelPage else "$mainUrl/channel/malayalam/page/$page/"
+            app.get(url, referer = mainUrl).document
+        }
 
-        return doc.select("a[href*='/live/']")
+        return pages
+            .flatMap { it.select("a[href*='/live/']") }
             .mapNotNull { anchor ->
                 val href = anchor.absUrl("href").ifBlank { anchor.attr("href") }
                 if (!href.contains("/live/")) return@mapNotNull null
@@ -148,13 +152,20 @@ class BhoomTVProvider : MainAPI() {
                     ?: anchor.text().trim()
 
                 if (title.isBlank()) return@mapNotNull null
+                if (normalizedQuery.isNotBlank() &&
+                    !title.contains(normalizedQuery, ignoreCase = true)
+                ) {
+                    return@mapNotNull null
+                }
 
-                val stream = findDirectStream(href) ?: return@mapNotNull null
                 val poster = findPoster(anchor)
 
+                // Keep the BHOOM channel page URL here. The actual stream is
+                // resolved when the result is opened, so failed stream extraction
+                // cannot make the channel disappear from search results.
                 newLiveSearchResponse(
                     name = title,
-                    url = stream
+                    url = href
                 ) {
                     posterUrl = poster
                 }
@@ -163,12 +174,13 @@ class BhoomTVProvider : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        // IMPORTANT: exactly like the Famelack architecture:
-        // the URL stored in SearchResponse is already the real stream URL.
+        // Resolve the actual stream when the channel is opened.
+        val stream = findDirectStream(url)
+
         return newLiveStreamLoadResponse(
-            name = "Live Stream",
+            name = url.substringAfter("/live/").trim('/').replace("-", " "),
             url = url,
-            dataUrl = url
+            dataUrl = stream ?: url
         )
     }
 
@@ -178,31 +190,51 @@ class BhoomTVProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        // IMPORTANT: do not crawl the BHOOM page here.
-        // CloudStream receives the direct M3U8/MPD URL from SearchResponse.
         if (!data.startsWith("http://", true) && !data.startsWith("https://", true)) {
             return false
         }
 
-        val type = when {
-            data.contains(".mpd", true) -> ExtractorLinkType.DASH
-            data.contains(".m3u8", true) -> ExtractorLinkType.M3U8
-            else -> return false
+        // Normally load() has already converted the channel page into a
+        // direct M3U8/MPD URL. Keep a fallback for pages where the stream
+        // can only be resolved at playback time.
+        val stream = if (
+            data.contains(".m3u8", true) || data.contains(".mpd", true)
+        ) {
+            data
+        } else {
+            findDirectStream(data)
         }
 
-        callback(
-            newExtractorLink(
-                source = name,
-                name = name,
-                url = data,
-                type = type
-            ) {
-                referer = ""
-                quality = Qualities.Unknown.value
+        if (!stream.isNullOrBlank()) {
+            val type = when {
+                stream.contains(".mpd", true) -> ExtractorLinkType.DASH
+                stream.contains(".m3u8", true) -> ExtractorLinkType.M3U8
+                else -> null
             }
-        )
 
-        return true
+            if (type != null) {
+                callback(
+                    newExtractorLink(
+                        source = name,
+                        name = name,
+                        url = stream,
+                        type = type
+                    ) {
+                        referer = ""
+                        quality = Qualities.Unknown.value
+                    }
+                )
+                return true
+            }
+        }
+
+        // Last fallback: let CloudStream's extractor system inspect the page.
+        return try {
+            loadExtractor(data, subtitleCallback, callback)
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun parseChannelPage(doc: Document): List<SearchResponse> {
