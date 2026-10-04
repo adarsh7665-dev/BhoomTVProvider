@@ -300,9 +300,6 @@ class BhoomTVProvider : MainAPI() {
         )
     )
 
-    private val streamInfoByUrl =
-        stream1BySlug.values.associateBy { it.url }
-
     /*
      * BHOOM's Mollywood TV / Plus pages are container pages.
      * Expose the actual child channels individually in CloudStream.
@@ -370,6 +367,10 @@ class BhoomTVProvider : MainAPI() {
             "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_KOCHU_TV/images/LOGO_HD/image.png"
         )
     )
+
+    private val streamInfoByUrl =
+        (stream1BySlug.values + mollywoodChannels.map { it.stream })
+            .associateBy { it.url }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val pageNumber = page.coerceAtLeast(1)
