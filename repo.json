@@ -1,6 +1,6 @@
 {
   "name": "Bhoom TV CloudStream Repository",
-  "description": "CloudStream extension for BHOOM TV Malayalam live channels",
+  "description": "BHOOM TV Malayalam live-TV extension",
   "manifestVersion": 1,
   "pluginLists": [
     "https://raw.githubusercontent.com/adarsh7665-dev/BhoomTVProvider/builds/plugins.json"
