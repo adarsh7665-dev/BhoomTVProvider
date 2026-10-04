@@ -1,0 +1,26 @@
+name: Build CloudStream extension
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Make extension
+        run: ./gradlew BhoomTV:make
+      - name: Build repository metadata
+        run: ./gradlew make
+      - name: Publish builds branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          publish_branch: builds
+          publish_dir: ./build/repo
+          github_token: ${{ secrets.GITHUB_TOKEN }}
