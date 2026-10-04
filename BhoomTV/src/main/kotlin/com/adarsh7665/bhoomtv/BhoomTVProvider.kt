@@ -27,7 +27,7 @@ class BhoomTVProvider : MainAPI() {
      */
     private val stream1BySlug = mapOf(
         "keralam-hd" to Stream1(
-            "https://watchindia.net:8443/live/31852/18556/287.ts"
+            "https://live.drmlive-02.workers.dev/zee/129.m3u8"
         ),
         "globeon-television" to Stream1(
             "https://bhoomtv.net/geo/live.m3u8?id=3565&vtoken=st=1790654897",
@@ -320,50 +320,50 @@ class BhoomTVProvider : MainAPI() {
     private val mollywoodChannels = listOf(
         MollywoodChannel(
             "Asianet HD",
-            Stream1("https://watchindia.net:8443/live/31852/18556/276.ts"),
+            Stream1("https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/in/YuppTV/AsianetHD.m3u8"),
             "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_HD/images/LOGO_HD/image.png"
         ),
         MollywoodChannel(
             "Asianet Movies HD",
-            Stream1("http://149.71.34.166:8000/play/a06e/index.m3u8"),
+            Stream1("https://live.dinesh29.com.np/stream/jiotvplus/asianetmovieshd/master.m3u8"),
             "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_MOVIES_HD/images/LOGO_HD/image.png"
         ),
         MollywoodChannel(
             "Asianet Plus",
             Stream1(
-                "https://watchindia.net:8443/live/31852/18556/277.ts",
+                "https://anet.keralive.workers.dev/v1/master/a0d007312bfd99c47f76b77ae26b1ccdaae76cb1/asianetplus_live_https/index.m3u8",
                 "https://tulnit.com"
             ),
             "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_PLUS/images/LOGO_HD/image.png"
         ),
         MollywoodChannel(
             "Zee Keralam HD",
-            Stream1("https://watchindia.net:8443/live/31852/18556/287.ts"),
+            Stream1("https://live.drmlive-02.workers.dev/zee/129.m3u8"),
             "https://akamaividz2.zee5.com/image/upload/resources/0-9-129/channel_list/1170x658withlogoea00fd123614470c9f82e2fde66280e4.png"
         ),
         MollywoodChannel(
             "Surya TV HD",
-            Stream1("https://watchindia.net:8443/live/31852/18556/279.ts"),
+            Stream1("http://indtv.online/sunnxt/sunnxt/SuryaTVHD.m3u8"),
             "https://sund-images.sunnxt.com/194397/1000x1000_SuryaTVHD_194397_4c99c17b-92d4-49be-a490-b5958067190a.png"
         ),
         MollywoodChannel(
             "Surya Movies",
-            Stream1("https://watchindia.net:8443/live/31852/18556/298.ts"),
+            Stream1("http://indtv.online/sunnxt/sunnxt/SuryaMovies.m3u8"),
             "https://sund-images.sunnxt.com/9019/1000x1000_c10cc678-9321-43f8-b717-16fa7913a6ba.jpg"
         ),
         MollywoodChannel(
             "Surya Comedy",
-            Stream1("https://watchindia.net:8443/live/31852/18556/299.ts"),
+            Stream1("http://indtv.online/sunnxt/sunnxt/SuryaComedy.m3u8"),
             "https://sund-images.sunnxt.com/30835/1000x1000_143a4af4-2f02-4c9c-814b-af149e6a5a95.jpg"
         ),
         MollywoodChannel(
             "Surya Music",
-            Stream1("https://watchindia.net:8443/live/31852/18556/285.ts"),
+            Stream1("http://indtv.online/sunnxt/sunnxt/SuryaMusic.m3u8"),
             "https://sund-images.sunnxt.com/26575/1000x1000_a73efcfb-e350-491c-94e0-bd75f0d9d5f2.jpg"
         ),
         MollywoodChannel(
             "Kochu TV",
-            Stream1("https://watchindia.net:8443/live/31852/18556/290.ts"),
+            Stream1("https://sflex07.fun:443/07/jio/app/ts_live_556.m3u8"),
             "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_KOCHU_TV/images/LOGO_HD/image.png"
         )
     )
