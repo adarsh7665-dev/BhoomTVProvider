@@ -589,7 +589,7 @@ class BhoomTVProvider : MainAPI() {
                 type = type
             ) {
                 referer = stream.referer
-                headers = headers
+                this.headers = headers
                 quality = Qualities.Unknown.value
             }
         )
