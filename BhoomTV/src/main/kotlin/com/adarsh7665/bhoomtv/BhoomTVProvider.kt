@@ -61,7 +61,7 @@ class BhoomTVProvider : MainAPI() {
             "https://mumt01.tangotv.in/O5aw8Zn3KAIRALI/index.m3u8"
         ),
         "kairali-we" to Stream1(
-            "https://mumt01.tangotv.in/O5aw8Zn3WETV/index.m3u8"
+            "https://streams.tangotv.in/WETV/ORIGIN/index.m3u8"
         ),
         "kairali-arabia" to Stream1(
             "https://streamhub.dhruvpatil681.workers.dev/3452.m3u8"
@@ -320,7 +320,7 @@ class BhoomTVProvider : MainAPI() {
 
     private val mollywoodChannels = listOf(
         MollywoodChannel(
-            "Asianet HD",
+            "Asianet HD - JIO",
             Stream1("https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/in/YuppTV/AsianetHD.m3u8"),
             "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_HD/images/LOGO_HD/image.png"
         ),
@@ -339,33 +339,23 @@ class BhoomTVProvider : MainAPI() {
         ),
         MollywoodChannel(
             "Zee Keralam HD",
-            Stream1("http://51.75.127.199:3141/zeekeralamhd/index.m3u8"),
+            Stream1("https://live.drmlive-02.workers.dev/zee/129.m3u8"),
             "https://akamaividz2.zee5.com/image/upload/resources/0-9-129/channel_list/1170x658withlogoea00fd123614470c9f82e2fde66280e4.png"
         ),
         MollywoodChannel(
-            "Surya TV HD",
-            Stream1("https://livestream10.sunnxt.com/DolbyVision/SuryaTV_HDR/SuryaTV_HDR_Endpoints/SuryaTV-HDR10-IN-index.m3u8"),
+            "Surya TV FHD",
+            Stream1("https://iamsom5.vercel.app/api/sunnxt.php?id=26574&e=.m3u8"),
             "https://sund-images.sunnxt.com/194397/1000x1000_SuryaTVHD_194397_4c99c17b-92d4-49be-a490-b5958067190a.png"
         ),
         MollywoodChannel(
-            "Surya Movies",
-            Stream1("http://103.140.254.2:3500/live/1754.m3u8"),
-            "https://sund-images.sunnxt.com/9019/1000x1000_c10cc678-9321-43f8-b717-16fa7913a6ba.jpg"
-        ),
-        MollywoodChannel(
             "Surya Comedy",
-            Stream1("http://103.140.254.2:3500/live/1662.m3u8"),
+            Stream1("https://iamsom5.vercel.app/api/sunnxt.php?id=30835&e=.m3u8"),
             "https://sund-images.sunnxt.com/30835/1000x1000_143a4af4-2f02-4c9c-814b-af149e6a5a95.jpg"
         ),
         MollywoodChannel(
-            "Surya Music",
-            Stream1("http://103.140.254.2:3500/live/747.m3u8"),
-            "https://sund-images.sunnxt.com/26575/1000x1000_a73efcfb-e350-491c-94e0-bd75f0d9d5f2.jpg"
-        ),
-        MollywoodChannel(
-            "Kochu TV",
-            Stream1("http://103.140.254.2:3500/live/556.m3u8"),
-            "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_KOCHU_TV/images/LOGO_HD/image.png"
+            "Surya Movies",
+            Stream1("https://iamsom5.vercel.app/api/sunnxt.php?id=9019&e=.m3u8"),
+            "https://sund-images.sunnxt.com/9019/1000x1000_71ddcc0b-16e7-48e9-9998-aa023200f4bc.jpg"
         )
     )
 
