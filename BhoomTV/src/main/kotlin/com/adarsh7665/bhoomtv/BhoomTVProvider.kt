@@ -124,9 +124,9 @@ class BhoomTVProvider : MainAPI() {
             """(?i)["'](?:file|src|source|stream|url|playlist|hls|dash)["']\s*[:=]\s*["']([^"']+)["']"""
         ).findAll(html).forEach { addCandidate(it.groupValues[1]) }
 
-        // Some pages escape slashes inside JSON.
+        // Also catch JSON values where the URL itself is escaped.
         Regex(
-            """(?i)(?:file|src|source|stream|url|playlist)\\?["']\s*:\s*\\?["']([^"']+?)(?:\\?["'])"""
+            """(?i)["'](?:file|src|source|stream|url|playlist)["']\s*[:=]\s*["']((?:https?:)?//[^"']+)["']"""
         ).findAll(html).forEach { addCandidate(it.groupValues[1]) }
 
         var linkCount = 0
