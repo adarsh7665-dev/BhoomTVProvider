@@ -365,44 +365,27 @@ class BhoomTVProvider : MainAPI() {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val pageNumber = page.coerceAtLeast(1)
-        val url = if (pageNumber == 1) {
-            channelPage
-        } else {
-            "$mainUrl/channel/malayalam/page/$pageNumber/"
-        }
-
+        val url = if (pageNumber == 1) channelPage else "$mainUrl/channel/malayalam/page/$pageNumber/"
         val doc = app.get(url, referer = mainUrl).document
+
         val items = buildList {
             addAll(parseChannelPage(doc))
             if (pageNumber == 1) {
-                addAll(mollywoodChannels.map { channel ->
-                    newLiveSearchResponse(channel.name, channel.stream.url) {
-                        posterUrl = channel.poster
-                    }
-                })
+                add(newLiveSearchResponse("Mollywood TV", "mollywood-tv"))
+                add(newLiveSearchResponse("Mollywood Plus", "mollywood-plus"))
             }
         }.distinctBy { it.url }
 
         val maxPage = doc.select("a[href*='/channel/malayalam/page/']")
             .mapNotNull { link ->
-                Regex("""/channel/malayalam/page/(\d+)/?""")
-                    .find(link.attr("href"))
-                    ?.groupValues
-                    ?.getOrNull(1)
-                    ?.toIntOrNull()
-            }
-            .maxOrNull()
+                Regex("""/channel/malayalam/page/(\d+)/?""").find(link.attr("href"))
+                    ?.groupValues?.getOrNull(1)?.toIntOrNull()
+            }.maxOrNull()
 
         val hasNext = maxPage?.let { pageNumber < it } ?: (items.isNotEmpty() && pageNumber < 4)
 
         return newHomePageResponse(
-            listOf(
-                HomePageList(
-                    "Malayalam Live TV",
-                    items,
-                    isHorizontalImages = false
-                )
-            ),
+            listOf(HomePageList("Malayalam Live TV", items, isHorizontalImages = false)),
             hasNext = hasNext
         )
     }
@@ -411,81 +394,49 @@ class BhoomTVProvider : MainAPI() {
         val normalizedQuery = query.trim()
 
         val pages = (1..4).map { page ->
-            val url = if (page == 1) {
-                channelPage
-            } else {
-                "$mainUrl/channel/malayalam/page/$page/"
-            }
+            val url = if (page == 1) channelPage else "$mainUrl/channel/malayalam/page/$page/"
             app.get(url, referer = mainUrl).document
         }
 
-        val pageResults = pages
-            .flatMap { it.select("a[href*='/live/']") }
-            .mapNotNull { anchor ->
-                val href = anchor.absUrl("href").ifBlank { anchor.attr("href") }
-                if (!href.contains("/live/")) return@mapNotNull null
+        val pageResults = pages.flatMap { it.select("a[href*='/live/']") }.mapNotNull { anchor ->
+            val href = anchor.absUrl("href").ifBlank { anchor.attr("href") }
+            if (!href.contains("/live/")) return@mapNotNull null
 
-                val title = anchor.selectFirst("h2, h3, .title, .entry-title")?.text()?.trim()
-                    ?: anchor.text().trim()
+            val title = anchor.selectFirst("h2, h3, .title, .entry-title")?.text()?.trim()
+                ?: anchor.text().trim()
+            if (title.isBlank()) return@mapNotNull null
 
-                if (title.isBlank()) return@mapNotNull null
+            if (title.equals("Mollywood TV", true) || title.equals("Mollywood Plus", true) ||
+                title.equals("Mollywood Max", true)) return@mapNotNull null
 
-                // Mollywood TV / Plus / Max are container pages.
-                if (title.equals("Mollywood TV", ignoreCase = true) ||
-                    title.equals("Mollywood Plus", ignoreCase = true) ||
-                    title.equals("Mollywood Max", ignoreCase = true)
-                ) {
-                    return@mapNotNull null
-                }
-
-                if (normalizedQuery.isNotBlank() &&
-                    !title.contains(normalizedQuery, ignoreCase = true)
-                ) {
-                    return@mapNotNull null
-                }
-
-                val slug = href
-                    .substringAfter("/live/")
-                    .substringBefore("/")
-                    .lowercase()
-
-                val stream = stream1BySlug[slug] ?: return@mapNotNull null
-                val poster = findPoster(anchor)
-
-                newLiveSearchResponse(
-                    name = title,
-                    url = stream.url
-                ) {
-                    posterUrl = poster
-                }
+            if (normalizedQuery.isNotBlank() && !title.contains(normalizedQuery, true)) {
+                return@mapNotNull null
             }
 
-        val mollywoodResults = mollywoodChannels
-            .filter {
-                normalizedQuery.isBlank() ||
-                    it.name.contains(normalizedQuery, ignoreCase = true)
-            }
-            .map { channel ->
-                newLiveSearchResponse(
-                    name = channel.name,
-                    url = channel.stream.url
-                ) {
-                    posterUrl = channel.poster
-                }
-            }
+            val slug = href.substringAfter("/live/").substringBefore("/").lowercase()
+            val stream = stream1BySlug[slug] ?: return@mapNotNull null
+            val poster = findPoster(anchor)
 
-        return (pageResults + mollywoodResults)
-            .distinctBy { it.url }
+            newLiveSearchResponse(title, stream.url) { posterUrl = poster }
+        }
+
+        val mollywoodResults = listOf(
+            "Mollywood TV" to "mollywood-tv",
+            "Mollywood Plus" to "mollywood-plus"
+        ).filter { normalizedQuery.isBlank() || it.first.contains(normalizedQuery, true) }
+            .map { (title, data) -> newLiveSearchResponse(title, data) }
+
+        return (pageResults + mollywoodResults).distinctBy { it.url }
     }
 
     override suspend fun load(url: String): LoadResponse {
-        val title = "Live Stream"
+        val title = when (url) {
+            "mollywood-tv" -> "Mollywood TV"
+            "mollywood-plus" -> "Mollywood Plus"
+            else -> "Live Stream"
+        }
 
-        return newLiveStreamLoadResponse(
-            name = title,
-            url = url,
-            dataUrl = url
-        )
+        return newLiveStreamLoadResponse(name = title, url = url, dataUrl = url)
     }
 
     override suspend fun loadLinks(
@@ -494,38 +445,50 @@ class BhoomTVProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        if (!data.startsWith("http://", true) && !data.startsWith("https://", true)) {
-            return false
+        val groupedChannels = when (data) {
+            "mollywood-tv" -> mollywoodChannels.take(4)
+            "mollywood-plus" -> mollywoodChannels.drop(4)
+            else -> null
         }
 
-        val stream = streamInfoByUrl[data] ?: Stream1(data)
+        if (groupedChannels != null) {
+            groupedChannels.forEach { channel ->
+                val stream = channel.stream
+                callback(
+                    newExtractorLink(
+                        source = channel.name,
+                        name = channel.name,
+                        url = stream.url,
+                        type = ExtractorLinkType.M3U8
+                    ) {
+                        referer = stream.referer
+                        headers = mapOf(
+                            "User-Agent" to USER_AGENT,
+                            "Accept" to "*/*"
+                        )
+                        quality = Qualities.Unknown.value
+                    }
+                )
+            }
+            return groupedChannels.isNotEmpty()
+        }
 
+        if (!data.startsWith("http://", true) && !data.startsWith("https://", true)) return false
+
+        val stream = streamInfoByUrl[data] ?: Stream1(data)
         val type = when {
-            data.contains(".mpd", ignoreCase = true) -> ExtractorLinkType.DASH
-            data.contains(".m3u8", ignoreCase = true) -> ExtractorLinkType.M3U8
+            data.contains(".mpd", true) -> ExtractorLinkType.DASH
+            data.contains(".m3u8", true) -> ExtractorLinkType.M3U8
             else -> ExtractorLinkType.VIDEO
         }
 
-        /*
-         * Famelack-style playback: emit the configured stream immediately.
-         * Do not pre-fetch or resolve the manifest in the provider.
-         */
         callback(
-            newExtractorLink(
-                source = name,
-                name = name,
-                url = data,
-                type = type
-            ) {
+            newExtractorLink(source = name, name = name, url = data, type = type) {
                 referer = stream.referer
-                this.headers = mapOf(
-                    "User-Agent" to USER_AGENT,
-                    "Accept" to "*/*"
-                )
+                headers = mapOf("User-Agent" to USER_AGENT, "Accept" to "*/*")
                 quality = Qualities.Unknown.value
             }
         )
-
         return true
     }
 
