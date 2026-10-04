@@ -74,7 +74,7 @@ class BhoomTVProvider : MainAPI() {
         "mollywood-max" to Stream1(
             "http://indtv.online/sunnxt/sunnxt/SuryaMovies.m3u8"
         ),
-        "mazhavil-manorama-hd" to Stream1(
+        "mazhavil-manorama" to Stream1(
             "https://ddozob4sbfsmt.cloudfront.net/out/v1/51aaeddf56854312add90dfa8df07e39/index.m3u8"
         ),
         "mazhavil-manorama-sd" to Stream1(
