@@ -314,53 +314,67 @@ class BhoomTVProvider : MainAPI() {
      */
     private data class MollywoodChannel(
         val name: String,
-        val stream: Stream1,
+        val streams: List<Stream1>,
         val poster: String? = null
-    )
+    ) {
+        val stream: Stream1 get() = streams.first()
+    }
 
     private val mollywoodChannels = listOf(
         MollywoodChannel(
             "Asianet HD - JIO",
-            Stream1("https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/in/YuppTV/AsianetHD.m3u8"),
+            listOf(Stream1("https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/in/YuppTV/AsianetHD.m3u8")),
             "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_HD/images/LOGO_HD/image.png"
         ),
         MollywoodChannel(
             "Asianet Movies HD",
-            Stream1("https://anet.keralive.workers.dev/v1/master/a0d007312bfd99c47f76b77ae26b1ccdaae76cb1/asianetmovies_live_https/index.m3u8"),
+            listOf(
+                Stream1("https://da86m1sqpm3o0.cloudfront.net/28072023/smil:asianetmovies1.smil/playlist.m3u8"),
+                Stream1("https://anet.keralive.workers.dev/v1/master/a0d007312bfd99c47f76b77ae26b1ccdaae76cb1/asianetmovies_live_https/index.m3u8")
+            ),
             "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_MOVIES_HD/images/LOGO_HD/image.png"
         ),
         MollywoodChannel(
             "Asianet Plus",
-            Stream1(
-                "https://anet.keralive.workers.dev/v1/master/a0d007312bfd99c47f76b77ae26b1ccdaae76cb1/asianetplus_live_https/index.m3u8",
-                "https://tulnit.com"
+            listOf(
+                Stream1("http://asianetplus-i.akamaihd.net/hls/live/569922/asianetplus/master_2000.m3u8"),
+                Stream1("https://anet.keralive.workers.dev/v1/master/a0d007312bfd99c47f76b77ae26b1ccdaae76cb1/asianetplus_live_https/index.m3u8", "https://tulnit.com")
             ),
             "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_PLUS/images/LOGO_HD/image.png"
         ),
         MollywoodChannel(
             "Zee Keralam HD",
-            Stream1("http://indtv.online/zee5/zee5/0-9-129.m3u8"),
+            listOf(Stream1("http://indtv.online/zee5/zee5/0-9-129.m3u8")),
             "https://akamaividz2.zee5.com/image/upload/resources/0-9-129/channel_list/1170x658withlogoea00fd123614470c9f82e2fde66280e4.png"
         ),
         MollywoodChannel(
             "Surya TV FHD",
-            Stream1("http://indtv.online/sunnxt/sunnxt/SuryaTVHD.m3u8"),
+            listOf(
+                Stream1("http://indtv.online/sunnxt/sunnxt/SuryaTVHD.m3u8"),
+                Stream1("https://sflex07.fun:443/07/jio/app/ts_live_900.m3u8")
+            ),
             "https://sund-images.sunnxt.com/194397/1000x1000_SuryaTVHD_194397_4c99c17b-92d4-49be-a490-b5958067190a.png"
         ),
         MollywoodChannel(
             "Surya Comedy",
-            Stream1("http://indtv.online/sunnxt/sunnxt/SuryaComedy.m3u8"),
+            listOf(
+                Stream1("http://indtv.online/sunnxt/sunnxt/SuryaComedy.m3u8"),
+                Stream1("https://sflex07.fun:443/07/jio/app/ts_live_1662.m3u8")
+            ),
             "https://sund-images.sunnxt.com/30835/1000x1000_143a4af4-2f02-4c9c-814b-af149e6a5a95.jpg"
         ),
         MollywoodChannel(
             "Surya Movies",
-            Stream1("http://indtv.online/sunnxt/sunnxt/SuryaMovies.m3u8"),
+            listOf(
+                Stream1("http://indtv.online/sunnxt/sunnxt/SuryaMovies.m3u8"),
+                Stream1("https://sflex07.fun:443/07/jio/app/ts_live_1754.m3u8")
+            ),
             "https://sund-images.sunnxt.com/9019/1000x1000_71ddcc0b-16e7-48e9-9998-aa023200f4bc.jpg"
         )
     )
 
     private val streamInfoByUrl =
-        (stream1BySlug.values + mollywoodChannels.map { it.stream })
+        (stream1BySlug.values + mollywoodChannels.flatMap { it.streams })
             .associateBy { it.url }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
@@ -448,16 +462,30 @@ class BhoomTVProvider : MainAPI() {
     ): Boolean {
         if (!data.startsWith("http://", true) && !data.startsWith("https://", true)) return false
 
-        val stream = streamInfoByUrl[data] ?: Stream1(data)
-        val type = when {
-            data.contains(".mpd", true) -> ExtractorLinkType.DASH
-            data.contains(".m3u8", true) -> ExtractorLinkType.M3U8
-            else -> ExtractorLinkType.VIDEO
+        val channel = mollywoodChannels.firstOrNull { it.streams.any { stream -> stream.url == data } }
+        val candidates = channel?.streams ?: listOf(streamInfoByUrl[data] ?: Stream1(data))
+
+        // Probe candidates and expose only the first endpoint that returns a valid manifest.
+        val selected = candidates.firstOrNull { candidate ->
+            runCatching {
+                val response = app.get(candidate.url, referer = candidate.referer, timeout = 8_000)
+                response.isSuccessful && (
+                    candidate.url.contains(".m3u8", true) ||
+                    response.text.contains("#EXTM3U", true) ||
+                    response.text.contains("<MPD", true)
+                )
+            }.getOrDefault(false)
+        } ?: return false
+
+        val type = if (selected.url.contains(".mpd", true)) {
+            ExtractorLinkType.DASH
+        } else {
+            ExtractorLinkType.M3U8
         }
 
         callback(
-            newExtractorLink(source = name, name = name, url = data, type = type) {
-                referer = stream.referer
+            newExtractorLink(source = name, name = name, url = selected.url, type = type) {
+                referer = selected.referer
                 headers = mapOf("User-Agent" to USER_AGENT, "Accept" to "*/*")
                 quality = Qualities.Unknown.value
             }
