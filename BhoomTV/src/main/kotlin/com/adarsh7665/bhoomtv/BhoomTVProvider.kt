@@ -167,7 +167,7 @@ class BhoomTVProvider : MainAPI() {
             "Surya HD",
             pageUrlFor("surya-hd")
         ) {
-            posterUrl = "https://dtil.tmsimg.com/assets/s143885_ld_h15_ab.png"
+            posterUrl = "https://upload.wikimedia.org/wikipedia/commons/0/0f/Surya_TV_logo.svg"
         },
         newLiveSearchResponse(
             "Surya Movies",
