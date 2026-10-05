@@ -167,7 +167,7 @@ class BhoomTVProvider : MainAPI() {
             "Surya HD",
             pageUrlFor("surya-hd")
         ) {
-            posterUrl = "https://upload.wikimedia.org/wikipedia/commons/0/0f/Surya_TV_logo.svg"
+            posterUrl = "https://dtil.tmsimg.com/assets/s143885_ld_h15_ab.png"
         },
         newLiveSearchResponse(
             "Surya Movies",
@@ -293,7 +293,7 @@ class BhoomTVProvider : MainAPI() {
                         name = label,
                         url = candidate.url,
                         type = type,
-                        uuid = CLEARKEY_DRM_UUID
+                        uuid = CLEARKEY_UUID
                     ) {
                         referer = candidate.referer
                         headers = mapOf(
