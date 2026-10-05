@@ -53,7 +53,7 @@ class BhoomTVProvider : MainAPI() {
         "surya-comedy" to listOf(
             Stream1(
                 url = "https://nxliv.com/sunxt/livestream.sunnxt.com/6505e922bf164423ad122f404747356a/SuryaComedyB_IN_index.mpd",
-                referer = "https://nxliv.com/",
+                referer = "https://nxliv.com/sunxt/Play.php?c=15",
                 label = "Surya Comedy",
                 kid = "EVY7AKRrQ/Kg+A7PQqT7dw==",
                 key = "m60orW8j27kXxj7mgPZqHw=="
