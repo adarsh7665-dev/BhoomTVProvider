@@ -46,8 +46,8 @@ class BhoomTVProvider : MainAPI() {
                 url = "https://nxliv.com/sunxt/livestream.sunnxt.com/e24ee14c395945bd8ccb065e1bce8b9b/SuryaMoviesB_IN_index.mpd",
                 referer = "https://nxliv.com/",
                 label = "Surya Movies",
-                kid = "6b67bccef7024f2da29b42e10dc13f89",
-                key = "2e8460c47d3f01693e193dba5963a5e1"
+                kid = "a2e8zvcCTy2im0LhDcE/iQ==",
+                key = "LoRgxH0/AWk+GT26WWOl4Q=="
             )
         ),
         "surya-comedy" to listOf(
@@ -55,8 +55,8 @@ class BhoomTVProvider : MainAPI() {
                 url = "https://nxliv.com/sunxt/livestream.sunnxt.com/6505e922bf164423ad122f404747356a/SuryaComedyB_IN_index.mpd",
                 referer = "https://nxliv.com/",
                 label = "Surya Comedy",
-                kid = "11563b00a46b43f2a0f80ecf42a4fb77",
-                key = "9bad28ad6f23dbb917c63ee680f66a1f"
+                kid = "EVY7AKRrQ/Kg+A7PQqT7dw==",
+                key = "m60orW8j27kXxj7mgPZqHw=="
             )
         ),
         "keralam-hd" to one("http://51.75.127.199:3141/zeekeralamhd/index.m3u8"),
