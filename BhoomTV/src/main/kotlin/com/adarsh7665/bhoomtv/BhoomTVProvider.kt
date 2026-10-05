@@ -46,8 +46,17 @@ class BhoomTVProvider : MainAPI() {
                 url = "https://nxliv.com/sunxt/livestream.sunnxt.com/e24ee14c395945bd8ccb065e1bce8b9b/SuryaMoviesB_IN_index.mpd",
                 referer = "https://nxliv.com/",
                 label = "Surya Movies",
-                kid = "a2e8zvcCTy2im0LhDcE/iQ==",
-                key = "LoRgxH0/AWk+GT26WWOl4Q=="
+                kid = "6b67bccef7024f2da29b42e10dc13f89",
+                key = "2e8460c47d3f01693e193dba5963a5e1"
+            )
+        ),
+        "surya-comedy" to listOf(
+            Stream1(
+                url = "https://nxliv.com/sunxt/livestream.sunnxt.com/6505e922bf164423ad122f404747356a/SuryaComedyB_IN_index.mpd",
+                referer = "https://nxliv.com/",
+                label = "Surya Comedy",
+                kid = "11563b00a46b43f2a0f80ecf42a4fb77",
+                key = "9bad28ad6f23dbb917c63ee680f66a1f"
             )
         ),
         "keralam-hd" to one("http://51.75.127.199:3141/zeekeralamhd/index.m3u8"),
@@ -164,7 +173,13 @@ class BhoomTVProvider : MainAPI() {
             "Surya Movies",
             pageUrlFor("surya-movies")
         ) {
-            posterUrl = "https://upload.wikimedia.org/wikipedia/commons/0/0f/Surya_TV_logo.svg"
+            posterUrl = "https://sund-images.sunnxt.com/194385/200x200_SuryaMovies_194385_0a1fbf90-a86a-4580-bdd8-36c6d1826c46.png"
+        },
+        newLiveSearchResponse(
+            "Surya Comedy",
+            pageUrlFor("surya-comedy")
+        ) {
+            posterUrl = "https://sund-images.sunnxt.com/193251/200x200_SuryaComedy_193251_1c2fd207-acad-4096-9bc4-d207375ae0af.png"
         }
     )
 
