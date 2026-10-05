@@ -183,6 +183,37 @@ class BhoomTVProvider : MainAPI() {
         }
     )
 
+
+    private val manualPosterBySlug: Map<String, String> = mapOf(
+        "asianet-movies-hd" to "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_MOVIES_HD/images/LOGO_HD/image.png",
+        "surya-hd" to "https://upload.wikimedia.org/wikipedia/commons/0/0f/Surya_TV_logo.svg",
+        "surya-movies" to "https://sund-images.sunnxt.com/194385/200x200_SuryaMovies_194385_0a1fbf90-a86a-4580-bdd8-36c6d1826c46.png",
+        "surya-comedy" to "https://sund-images.sunnxt.com/193251/200x200_SuryaComedy_193251_1c2fd207-acad-4096-9bc4-d207375ae0af.png"
+    )
+
+    private suspend fun posterForSlug(slug: String): String? {
+        manualPosterBySlug[slug]?.let { return it }
+
+        for (page in 1..4) {
+            val url = if (page == 1) channelPage else "$mainUrl/channel/malayalam/page/$page/"
+            val doc = try {
+                app.get(url, referer = mainUrl).document
+            } catch (e: Exception) {
+                continue
+            }
+
+            val anchor = doc.select("a[href*='/live/']").firstOrNull {
+                val href = it.absUrl("href").ifBlank { it.attr("href") }
+                slugOf(href) == slug
+            }
+
+            val poster = anchor?.let(::findPoster)
+            if (!poster.isNullOrBlank()) return poster
+        }
+
+        return null
+    }
+
     private fun pageUrlFor(slug: String) = "$mainUrl/live/$slug/"
 
     private fun slugOf(url: String): String =
@@ -244,12 +275,13 @@ class BhoomTVProvider : MainAPI() {
         var title = prettyName(slug)
         var poster: String? = null
 
+        poster = posterForSlug(slug)
+
         try {
             val doc = app.get(pageUrl, referer = mainUrl).document
             val ogTitle = doc.selectFirst("meta[property=og:title]")?.attr("content").orEmpty()
             val cleaned = ogTitle.substringBefore(" Live Online").removePrefix("Watch ").trim()
             if (cleaned.isNotBlank()) title = cleaned
-            poster = doc.selectFirst("meta[property=og:image]")?.attr("content")?.takeIf { it.isNotBlank() }
         } catch (e: Exception) {
             // Fall back to the slug-based name.
         }
