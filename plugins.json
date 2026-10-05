@@ -1,10 +1,10 @@
 [
     {
         "iconUrl": "https://bhoomtv.org/wp-content/uploads/2026/07/cropped-BHOOM-TV-Logo.png",
-        "fileHash": "sha256-cfdcd9cc967112bc8f41ff71df6748de8af9aafa401dc45ccb8a2b80d99d42e8",
+        "fileHash": "sha256-cd4f1733472d81853e483164f935e28fadc6bbcc3a1284b7eb0c1ee6d3edc0f2",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/adarsh7665-dev/BhoomTVProvider",
-        "fileSize": 23652,
+        "fileSize": 23670,
         "status": 1,
         "language": "ml",
         "authors": [
@@ -13,7 +13,7 @@
         "tvTypes": [
             "Live"
         ],
-        "version": 5,
+        "version": 7,
         "internalName": "BhoomTV",
         "url": "https://raw.githubusercontent.com/adarsh7665-dev/BhoomTVProvider/builds/BhoomTV.cs3",
         "name": "BhoomTV"
