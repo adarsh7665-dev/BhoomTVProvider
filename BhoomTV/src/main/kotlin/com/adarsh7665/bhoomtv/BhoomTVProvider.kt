@@ -38,6 +38,7 @@ class BhoomTVProvider : MainAPI() {
      */
     private val streamsBySlug: Map<String, List<Stream1>> = mapOf(
         "asianet-movies-hd" to one("https://as-net.keralive.workers.dev/v1/master/a0d007312bfd99c47f76b77ae26b1ccdaae76cb1/asianetmovies_live_https/index.m3u8", mainUrl),
+        "surya-hd" to one("https://d3dt6rg724ecr3.cloudfront.net/SuryaTv/SuryaTV-HDR10-IN-index.m3u8", mainUrl),
         "keralam-hd" to one("http://51.75.127.199:3141/zeekeralamhd/index.m3u8"),
         "globeon-television" to one("https://bhoomtv.net/geo/live.m3u8?id=3565&vtoken=st=1790654897", mainUrl),
         "wayanad-vision-plus" to one("https://online.wayanadvision.in/hls/streaming1.m3u8"),
@@ -141,6 +142,12 @@ class BhoomTVProvider : MainAPI() {
             pageUrlFor("asianet-movies-hd")
         ) {
             posterUrl = "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_MOVIES_HD/images/LOGO_HD/image.png"
+        },
+        newLiveSearchResponse(
+            "Surya HD",
+            pageUrlFor("surya-hd")
+        ) {
+            posterUrl = "https://upload.wikimedia.org/wikipedia/commons/0/0f/Surya_TV_logo.svg"
         }
     )
 
