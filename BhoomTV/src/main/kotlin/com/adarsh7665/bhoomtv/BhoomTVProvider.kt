@@ -133,6 +133,17 @@ class BhoomTVProvider : MainAPI() {
     // Container pages on BHOOM that are not real channels.
     private val hiddenTitles = setOf("mollywood tv", "mollywood plus", "mollywood max")
 
+    // Channels that are not currently exposed as /live/<slug>/ entries on BHOOM.
+    // These are added explicitly so they still appear in the extension search/homepage.
+    private fun manualChannels(): List<SearchResponse> = listOf(
+        newLiveSearchResponse(
+            "Asianet Movies HD",
+            pageUrlFor("asianet-movies-hd")
+        ) {
+            posterUrl = "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_MOVIES_HD/images/LOGO_HD/image.png"
+        }
+    )
+
     private fun pageUrlFor(slug: String) = "$mainUrl/live/$slug/"
 
     private fun slugOf(url: String): String =
@@ -147,7 +158,8 @@ class BhoomTVProvider : MainAPI() {
         val url = if (pageNumber == 1) channelPage else "$mainUrl/channel/malayalam/page/$pageNumber/"
         val doc = app.get(url, referer = mainUrl).document
 
-        val items = parseChannelPage(doc)
+        val items = (manualChannels() + parseChannelPage(doc))
+            .distinctBy { it.url }
 
         val maxPage = doc.select("a[href*='/channel/malayalam/page/']")
             .mapNotNull { link ->
@@ -174,7 +186,8 @@ class BhoomTVProvider : MainAPI() {
             } catch (e: Exception) {
                 continue
             }
-            results += parseChannelPage(doc).filter { q.isBlank() || it.name.contains(q, true) }
+            results += (manualChannels() + parseChannelPage(doc))
+                .filter { q.isBlank() || it.name.contains(q, true) }
         }
 
         return results.distinctBy { it.url }
