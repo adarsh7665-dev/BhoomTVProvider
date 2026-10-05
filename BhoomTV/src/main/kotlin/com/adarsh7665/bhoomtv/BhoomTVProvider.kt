@@ -21,7 +21,9 @@ class BhoomTVProvider : MainAPI() {
     private data class Stream1(
         val url: String,
         val referer: String = "",
-        val label: String? = null
+        val label: String? = null,
+        val kid: String? = null,
+        val key: String? = null
     )
 
     private fun one(url: String, referer: String = "") = listOf(Stream1(url, referer))
@@ -39,6 +41,15 @@ class BhoomTVProvider : MainAPI() {
     private val streamsBySlug: Map<String, List<Stream1>> = mapOf(
         "asianet-movies-hd" to one("https://as-net.keralive.workers.dev/v1/master/a0d007312bfd99c47f76b77ae26b1ccdaae76cb1/asianetmovies_live_https/index.m3u8", mainUrl),
         "surya-hd" to one("https://d3dt6rg724ecr3.cloudfront.net/SuryaTv/SuryaTV-HDR10-IN-index.m3u8", mainUrl),
+        "surya-movies" to listOf(
+            Stream1(
+                url = "https://nxliv.com/sunxt/livestream.sunnxt.com/e24ee14c395945bd8ccb065e1bce8b9b/SuryaMoviesB_IN_index.mpd",
+                referer = "https://nxliv.com/",
+                label = "Surya Movies",
+                kid = "a2e8zvcCTy2im0LhDcE/iQ==",
+                key = "LoRgxH0/AWk+GT26WWOl4Q=="
+            )
+        ),
         "keralam-hd" to one("http://51.75.127.199:3141/zeekeralamhd/index.m3u8"),
         "globeon-television" to one("https://bhoomtv.net/geo/live.m3u8?id=3565&vtoken=st=1790654897", mainUrl),
         "wayanad-vision-plus" to one("https://online.wayanadvision.in/hls/streaming1.m3u8"),
@@ -148,6 +159,12 @@ class BhoomTVProvider : MainAPI() {
             pageUrlFor("surya-hd")
         ) {
             posterUrl = "https://upload.wikimedia.org/wikipedia/commons/0/0f/Surya_TV_logo.svg"
+        },
+        newLiveSearchResponse(
+            "Surya Movies",
+            pageUrlFor("surya-movies")
+        ) {
+            posterUrl = "https://upload.wikimedia.org/wikipedia/commons/0/0f/Surya_TV_logo.svg"
         }
     )
 
@@ -254,16 +271,38 @@ class BhoomTVProvider : MainAPI() {
             val label = candidate.label
                 ?: if (candidates.size > 1) "Stream ${index + 1}" else name
 
-            callback(
-                newExtractorLink(source = name, name = label, url = candidate.url, type = type) {
-                    referer = candidate.referer
-                    headers = mapOf(
-                        "User-Agent" to USER_AGENT,
-                        "Accept" to "*/*"
-                    )
-                    quality = Qualities.Unknown.value
-                }
-            )
+            if (candidate.kid != null && candidate.key != null) {
+                callback(
+                    newDrmExtractorLink(
+                        source = name,
+                        name = label,
+                        url = candidate.url,
+                        type = type,
+                        uuid = CLEARKEY_DRM_UUID
+                    ) {
+                        referer = candidate.referer
+                        headers = mapOf(
+                            "User-Agent" to USER_AGENT,
+                            "Accept" to "*/*"
+                        )
+                        quality = Qualities.P480.value
+                        kid = candidate.kid
+                        key = candidate.key
+                        kty = "oct"
+                    }
+                )
+            } else {
+                callback(
+                    newExtractorLink(source = name, name = label, url = candidate.url, type = type) {
+                        referer = candidate.referer
+                        headers = mapOf(
+                            "User-Agent" to USER_AGENT,
+                            "Accept" to "*/*"
+                        )
+                        quality = Qualities.Unknown.value
+                    }
+                )
+            }
         }
 
         return true
