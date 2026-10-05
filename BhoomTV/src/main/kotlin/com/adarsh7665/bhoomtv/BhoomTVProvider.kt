@@ -40,6 +40,7 @@ class BhoomTVProvider : MainAPI() {
      */
     private val streamsBySlug: Map<String, List<Stream1>> = mapOf(
         "asianet-movies-hd" to one("https://as-net.keralive.workers.dev/v1/master/a0d007312bfd99c47f76b77ae26b1ccdaae76cb1/asianetmovies_live_https/index.m3u8", mainUrl),
+        "asianet-hd" to one("https://as-net.keralive.workers.dev/v1/master/a0d007312bfd99c47f76b77ae26b1ccdaae76cb1/asianet_us_https/index.m3u8", mainUrl),
         "surya-hd" to one("https://d3dt6rg724ecr3.cloudfront.net/SuryaTv/SuryaTV-HDR10-IN-index.m3u8", mainUrl),
         "surya-movies" to listOf(
             Stream1(
@@ -158,6 +159,12 @@ class BhoomTVProvider : MainAPI() {
     // These are added explicitly so they still appear in the extension search/homepage.
     private fun manualChannels(): List<SearchResponse> = listOf(
         newLiveSearchResponse(
+            "Asianet HD",
+            pageUrlFor("asianet-hd")
+        ) {
+            posterUrl = "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_HD/images/LOGO_HD/image.png"
+        },
+        newLiveSearchResponse(
             "Asianet Movies HD",
             pageUrlFor("asianet-movies-hd")
         ) {
@@ -185,6 +192,7 @@ class BhoomTVProvider : MainAPI() {
 
 
     private val manualPosterBySlug: Map<String, String> = mapOf(
+        "asianet-hd" to "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_HD/images/LOGO_HD/image.png",
         "asianet-movies-hd" to "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ASIANET_MOVIES_HD/images/LOGO_HD/image.png",
         "surya-hd" to "https://upload.wikimedia.org/wikipedia/commons/0/0f/Surya_TV_logo.svg",
         "surya-movies" to "https://sund-images.sunnxt.com/194385/200x200_SuryaMovies_194385_0a1fbf90-a86a-4580-bdd8-36c6d1826c46.png",
