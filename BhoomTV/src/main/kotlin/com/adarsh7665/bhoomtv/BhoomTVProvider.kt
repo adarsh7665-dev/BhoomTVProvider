@@ -430,7 +430,7 @@ class BhoomTVProvider : MainAPI() {
             }
         }
 
-        val background = Regex("""url\\(['"]?([^'")]+)['"]?\\)""", RegexOption.IGNORE_CASE)
+        val background = Regex("""url\(['"]?([^'")]+)['"]?\)""", RegexOption.IGNORE_CASE)
             .find(element.attr("style"))?.groupValues?.getOrNull(1)
         if (!background.isNullOrBlank()) {
             resolvePosterCandidate(element, background)?.let { return it }
