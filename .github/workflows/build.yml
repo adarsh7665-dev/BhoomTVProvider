@@ -47,7 +47,22 @@ jobs:
           ref: builds
           path: builds
 
+      - name: Check build freshness
+        id: freshness
+        run: |
+          SOURCE_SHA=$(git -C src rev-parse HEAD)
+          LATEST_MAIN_SHA=$(git ls-remote https://github.com/adarsh7665-dev/BhoomTVProvider.git refs/heads/main | cut -f1)
+
+          if [ "$SOURCE_SHA" != "$LATEST_MAIN_SHA" ]; then
+            echo "This build is stale ($SOURCE_SHA); latest main is $LATEST_MAIN_SHA. Skipping publish."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Build is current ($SOURCE_SHA)."
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish generated files
+        if: steps.freshness.outputs.publish == 'true'
         run: |
           find builds -mindepth 1 -maxdepth 1 ! -name ".git" -exec rm -rf {} +
           cp src/repo.json builds/repo.json
