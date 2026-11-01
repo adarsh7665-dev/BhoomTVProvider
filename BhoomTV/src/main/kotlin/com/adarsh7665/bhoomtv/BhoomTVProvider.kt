@@ -217,6 +217,13 @@ class BhoomTVProvider : MainAPI() {
         "surya-comedy" to "Surya Comedy"
     )
 
+    private fun posterHeadersFor(poster: String?): Map<String, String>? =
+        if (!poster.isNullOrBlank() && poster.startsWith(mainUrl, ignoreCase = true)) {
+            mapOf("Referer" to mainUrl, "User-Agent" to USER_AGENT)
+        } else {
+            null
+        }
+
     private fun pageUrlFor(slug: String) = "$mainUrl/live/$slug/"
 
     private fun slugOf(url: String): String =
@@ -284,6 +291,7 @@ class BhoomTVProvider : MainAPI() {
         // stream from the slug. A favourite should open without scraper latency.
         return newLiveStreamLoadResponse(name = title, url = pageUrl, dataUrl = pageUrl) {
             posterUrl = poster
+            posterHeaders = posterHeadersFor(poster)
         }
     }
 
@@ -372,6 +380,7 @@ class BhoomTVProvider : MainAPI() {
                 // stream URL no longer collapse into one entry.
                 newLiveSearchResponse(title, pageUrlFor(slug)) {
                     posterUrl = poster
+                    posterHeaders = posterHeadersFor(poster)
                 }
             }
             .distinctBy { it.url }
