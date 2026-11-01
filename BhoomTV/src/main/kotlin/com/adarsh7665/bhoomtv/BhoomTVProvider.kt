@@ -231,6 +231,9 @@ class BhoomTVProvider : MainAPI() {
         slug.split("-").filter { it.isNotBlank() }
             .joinToString(" ") { part -> part.replaceFirstChar { it.uppercase() } }
 
+    private fun normalize(s: String): String =
+        s.lowercase().replace(Regex("[^a-z0-9]"), "")
+
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val pageNumber = page.coerceAtLeast(1)
         val url = if (pageNumber == 1) channelPage else "$mainUrl/channel/malayalam/page/$pageNumber/"
@@ -254,9 +257,10 @@ class BhoomTVProvider : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val q = query.trim()
-        val results = ArrayList<SearchResponse>()
+        val q = normalize(query)
 
+        // 1) Channels scraped from the site (real titles + posters), if it's reachable.
+        val scraped = ArrayList<SearchResponse>()
         for (page in 1..4) {
             val url = if (page == 1) channelPage else "$mainUrl/channel/malayalam/page/$page/"
             val doc = try {
@@ -264,11 +268,27 @@ class BhoomTVProvider : MainAPI() {
             } catch (e: Exception) {
                 continue
             }
-            results += (manualChannels() + parseChannelPage(doc))
-                .filter { q.isBlank() || it.name.contains(q, true) }
+            scraped += parseChannelPage(doc)
         }
 
-        return results.distinctBy { it.url }
+        // 2) Every channel we have a stream for, built locally, so search still works
+        //    even if scraping returns nothing.
+        val scrapedSlugs = scraped.map { slugOf(it.url) }.toSet()
+        val local = streamsBySlug.keys
+            .filter { it !in scrapedSlugs }
+            .map { slug ->
+                newLiveSearchResponse(prettyName(slug), pageUrlFor(slug)) {
+                    posterUrl = manualPosterBySlug[slug]
+                }
+            }
+
+        return (manualChannels() + scraped + local)
+            .distinctBy { it.url }
+            .filter {
+                q.isEmpty() ||
+                    normalize(it.name).contains(q) ||
+                    normalize(slugOf(it.url)).contains(q)
+            }
     }
 
     override suspend fun load(url: String): LoadResponse {
