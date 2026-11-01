@@ -2,8 +2,6 @@ package com.adarsh7665.bhoomtv
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
-import java.net.URI
-import java.util.concurrent.ConcurrentHashMap
 
 class BhoomTVProvider : MainAPI() {
     override var mainUrl = "https://bhoomtv.org"
@@ -13,14 +11,6 @@ class BhoomTVProvider : MainAPI() {
     override val supportedTypes = setOf(TvType.Live)
 
     private val channelPage = "$mainUrl/channel/malayalam/"
-
-    private val fallbackPosterUrl = "$mainUrl/wp-content/uploads/2026/07/cropped-BHOOM-TV-Logo.png"
-
-    private data class ChannelInfo(val title: String, val poster: String?)
-
-    // Keeps the title and logo from the search result so opening a favourite
-    // does not need another request to BHOOM's website.
-    private val channelInfoCache = ConcurrentHashMap<String, ChannelInfo>()
 
     /**
      * One playable source for a channel.
@@ -209,20 +199,28 @@ class BhoomTVProvider : MainAPI() {
         "surya-comedy" to "https://sund-images.sunnxt.com/193251/200x200_SuryaComedy_193251_1c2fd207-acad-4096-9bc4-d207375ae0af.png"
     )
 
-    private val manualTitleBySlug: Map<String, String> = mapOf(
-        "asianet-hd" to "Asianet HD",
-        "asianet-movies-hd" to "Asianet Movies HD",
-        "surya-hd" to "Surya HD",
-        "surya-movies" to "Surya Movies",
-        "surya-comedy" to "Surya Comedy"
-    )
+    private suspend fun posterForSlug(slug: String): String? {
+        manualPosterBySlug[slug]?.let { return it }
 
-    private fun posterHeadersFor(poster: String?): Map<String, String>? =
-        if (!poster.isNullOrBlank() && poster.startsWith(mainUrl, ignoreCase = true)) {
-            mapOf("Referer" to mainUrl, "User-Agent" to USER_AGENT)
-        } else {
-            null
+        for (page in 1..4) {
+            val url = if (page == 1) channelPage else "$mainUrl/channel/malayalam/page/$page/"
+            val doc = try {
+                app.get(url, referer = mainUrl).document
+            } catch (e: Exception) {
+                continue
+            }
+
+            val anchor = doc.select("a[href*='/live/']").firstOrNull {
+                val href = it.absUrl("href").ifBlank { it.attr("href") }
+                slugOf(href) == slug
+            }
+
+            val poster = anchor?.let(::findPoster)
+            if (!poster.isNullOrBlank()) return poster
         }
+
+        return null
+    }
 
     private fun pageUrlFor(slug: String) = "$mainUrl/live/$slug/"
 
@@ -282,16 +280,22 @@ class BhoomTVProvider : MainAPI() {
         }
 
         val pageUrl = pageUrlFor(slug)
-        val cached = channelInfoCache[slug]
-        val title = cached?.title ?: manualTitleBySlug[slug] ?: prettyName(slug)
-        val poster = cached?.poster ?: manualPosterBySlug[slug] ?: fallbackPosterUrl
+        var title = prettyName(slug)
+        var poster: String? = null
 
-        // Do not fetch the BHOOM listing pages or channel page here. The search
-        // result already supplied the title/logo, and loadLinks resolves the
-        // stream from the slug. A favourite should open without scraper latency.
+        poster = posterForSlug(slug)
+
+        try {
+            val doc = app.get(pageUrl, referer = mainUrl).document
+            val ogTitle = doc.selectFirst("meta[property=og:title]")?.attr("content").orEmpty()
+            val cleaned = ogTitle.substringBefore(" Live Online").removePrefix("Watch ").trim()
+            if (cleaned.isNotBlank()) title = cleaned
+        } catch (e: Exception) {
+            // Fall back to the slug-based name.
+        }
+
         return newLiveStreamLoadResponse(name = title, url = pageUrl, dataUrl = pageUrl) {
             posterUrl = poster
-            posterHeaders = posterHeadersFor(poster)
         }
     }
 
@@ -373,103 +377,35 @@ class BhoomTVProvider : MainAPI() {
                 val slug = slugOf(href)
                 if (!streamsBySlug.containsKey(slug)) return@mapNotNull null
 
-                val poster = findPoster(anchor) ?: fallbackPosterUrl
-                channelInfoCache[slug] = ChannelInfo(title, poster)
+                val poster = findPoster(anchor)
 
                 // The channel page URL is the id, so two channels that happen to share a
                 // stream URL no longer collapse into one entry.
                 newLiveSearchResponse(title, pageUrlFor(slug)) {
                     posterUrl = poster
-                    posterHeaders = posterHeadersFor(poster)
                 }
             }
             .distinctBy { it.url }
     }
 
-    private fun resolvePosterCandidate(element: org.jsoup.nodes.Element, raw: String): String? {
-        val value = raw.trim().substringBefore(" ").trim().trim('"', '\'')
-        if (value.isBlank() || value.startsWith("data:", true) || value.startsWith("blob:", true)) {
-            return null
+    private fun findPoster(anchor: org.jsoup.nodes.Element): String? {
+        val direct = anchor.selectFirst("img")?.let {
+            it.absUrl("src").ifBlank { it.attr("src") }
         }
+        if (!direct.isNullOrBlank()) return direct
 
-        val resolved = when {
-            value.startsWith("https://", true) || value.startsWith("http://", true) -> value
-            value.startsWith("//") -> "https:$value"
-            else -> try {
-                URI(element.baseUri()).resolve(value).toString()
-            } catch (e: Exception) {
-                value
-            }
+        val parentPoster = anchor.parent()?.selectFirst("img")?.let {
+            it.absUrl("src").ifBlank { it.attr("src") }
         }
+        if (!parentPoster.isNullOrBlank()) return parentPoster
 
-        return resolved.takeIf {
-            it.startsWith("https://", true) || it.startsWith("http://", true)
-        }
-    }
-
-    private fun imageUrlFrom(element: org.jsoup.nodes.Element): String? {
-        // Lazy-loading themes often put the real artwork in data-* attributes
-        // while src contains a tiny transparent placeholder.
-        val imageAttributes = listOf(
-            "data-lazy-src",
-            "data-src",
-            "data-original",
-            "data-original-src",
-            "data-thumb",
-            "data-background-image",
-            "data-bg"
-        )
-
-        for (attribute in imageAttributes) {
-            val raw = element.attr(attribute)
-            if (raw.isNotBlank()) {
-                resolvePosterCandidate(element, raw)?.let { return it }
-            }
-        }
-
-        for (attribute in listOf("data-srcset", "srcset")) {
-            val raw = element.attr(attribute)
-            if (raw.isNotBlank()) {
-                val bestCandidate = raw.split(",")
-                    .map { it.trim().substringBefore(" ").trim() }
-                    .lastOrNull { it.isNotBlank() }
-                if (!bestCandidate.isNullOrBlank()) {
-                    resolvePosterCandidate(element, bestCandidate)?.let { return it }
+        return anchor.parents()
+            .asSequence()
+            .mapNotNull { parent ->
+                parent.selectFirst("img")?.let {
+                    it.absUrl("src").ifBlank { it.attr("src") }
                 }
             }
-        }
-
-        val background = Regex("""url\(['"]?([^'")]+)['"]?\)""", RegexOption.IGNORE_CASE)
-            .find(element.attr("style"))?.groupValues?.getOrNull(1)
-        if (!background.isNullOrBlank()) {
-            resolvePosterCandidate(element, background)?.let { return it }
-        }
-
-        val src = element.attr("src")
-        if (src.isNotBlank()) {
-            resolvePosterCandidate(element, src)?.let { return it }
-        }
-
-        return null
+            .firstOrNull { !it.isNullOrBlank() }
     }
-
-    private fun findPoster(anchor: org.jsoup.nodes.Element): String? {
-        val imageSelector = "img, source, [data-src], [data-lazy-src], [data-original], [data-background-image], [data-bg], [style*=background]"
-
-        val directElements = listOf(anchor) + anchor.select(imageSelector)
-        for (element in directElements) {
-            imageUrlFrom(element)?.let { return it }
-        }
-
-        // Some themes put the image on the card wrapper rather than the link.
-        for (parent in anchor.parents()) {
-            val parentElements = listOf(parent) + parent.select(imageSelector)
-            for (element in parentElements) {
-                imageUrlFrom(element)?.let { return it }
-            }
-        }
-
-        return null
-    }
-
 }
